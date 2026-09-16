@@ -1,0 +1,2182 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Composición y detalle de tenencias por cliente, asesor y FA.">
+  <title>Monitor de Tenencias</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23091020'/%3E%3Cpath d='M17 43V27h8v16zm11 0V17h8v26zm11 0V23h8v20z' fill='%2348d6a5'/%3E%3C/svg%3E">
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #07101d;
+      --surface: #0d1828;
+      --surface-2: #111f31;
+      --surface-3: #17263a;
+      --line: #22334a;
+      --text: #f4f7fb;
+      --muted: #91a2b8;
+      --accent: #48d6a5;
+      --accent-soft: rgba(72, 214, 165, .12);
+      --blue: #5aa7ff;
+      --danger: #ff7d8e;
+      --shadow: 0 18px 55px rgba(0, 0, 0, .22);
+      --radius: 18px;
+    }
+
+    * { box-sizing: border-box; }
+
+    html { background: var(--bg); }
+
+    body {
+      margin: 0;
+      min-width: 320px;
+      min-height: 100vh;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 12% -15%, rgba(72, 214, 165, .12), transparent 32rem),
+        radial-gradient(circle at 100% 0%, rgba(90, 167, 255, .10), transparent 28rem),
+        var(--bg);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 16px;
+      line-height: 1.45;
+    }
+
+    button, input, select { font: inherit; }
+
+    button, select { cursor: pointer; }
+
+    .shell {
+      width: min(1560px, calc(100% - 40px));
+      margin: 0 auto;
+      padding: 32px 0 52px;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 24px;
+      margin-bottom: 24px;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--accent);
+      font-size: .78rem;
+      font-weight: 800;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+    }
+
+    .eyebrow::before {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 0 5px var(--accent-soft);
+      content: "";
+    }
+
+    h1 {
+      margin: 8px 0 2px;
+      font-size: clamp(1.8rem, 3vw, 2.75rem);
+      line-height: 1.1;
+      letter-spacing: -.04em;
+    }
+
+    .topbar p { margin: 0; color: var(--muted); }
+
+    .updated {
+      flex: 0 0 auto;
+      padding: 11px 14px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--muted);
+      background: rgba(13, 24, 40, .76);
+      font-size: .84rem;
+      white-space: nowrap;
+    }
+
+    .updated strong { color: var(--text); font-weight: 700; }
+
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: linear-gradient(145deg, rgba(17, 31, 49, .97), rgba(10, 20, 34, .97));
+      box-shadow: var(--shadow);
+    }
+
+    .filters {
+      display: grid;
+      grid-template-columns: minmax(180px, 1fr) minmax(220px, 1.35fr) minmax(150px, .75fr) minmax(240px, 1.5fr) auto;
+      gap: 14px;
+      align-items: end;
+      padding: 18px;
+      margin-bottom: 18px;
+    }
+
+    .field { min-width: 0; }
+
+    .field label {
+      display: block;
+      margin: 0 0 7px;
+      color: var(--muted);
+      font-size: .78rem;
+      font-weight: 750;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+    }
+
+    .control {
+      width: 100%;
+      height: 44px;
+      padding: 0 13px;
+      border: 1px solid var(--line);
+      border-radius: 11px;
+      outline: none;
+      color: var(--text);
+      background: var(--surface-2);
+      transition: border-color .18s, box-shadow .18s;
+    }
+
+    .control:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-soft);
+    }
+
+    .advisor-field {
+      position: relative;
+      z-index: 20;
+    }
+
+    .search-select { position: relative; }
+
+    .search-select-trigger {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      text-align: left;
+    }
+
+    .search-select-trigger > span:first-child {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .search-select-chevron {
+      flex: 0 0 auto;
+      color: var(--muted);
+      font-size: .9rem;
+      transition: transform .18s;
+    }
+
+    .search-select.open .search-select-trigger {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-soft);
+    }
+
+    .search-select.open .search-select-chevron { transform: rotate(180deg); }
+
+    .search-select-popover {
+      position: absolute;
+      top: calc(100% + 8px);
+      right: 0;
+      left: 0;
+      z-index: 40;
+      padding: 9px;
+      border: 1px solid #31445f;
+      border-radius: 12px;
+      background: #0c1729;
+      box-shadow: 0 22px 60px rgba(0, 0, 0, .5);
+    }
+
+    .search-select-input {
+      height: 40px;
+      margin-bottom: 8px;
+    }
+
+    .search-select-options {
+      display: grid;
+      max-height: 280px;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      scrollbar-gutter: stable;
+    }
+
+    .search-select-option {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      width: 100%;
+      min-height: 40px;
+      padding: 8px 10px;
+      border: 0;
+      border-radius: 8px;
+      color: #dce8f5;
+      background: transparent;
+      text-align: left;
+    }
+
+    .search-select-option:hover,
+    .search-select-option:focus-visible {
+      outline: none;
+      color: var(--text);
+      background: rgba(90, 167, 255, .1);
+    }
+
+    .search-select-option[aria-selected="true"] {
+      color: var(--accent);
+      background: var(--accent-soft);
+      font-weight: 750;
+    }
+
+    .search-select-option[aria-selected="true"]::after {
+      flex: 0 0 auto;
+      content: "✓";
+    }
+
+    .search-select-empty {
+      padding: 14px 10px;
+      color: var(--muted);
+      font-size: .84rem;
+      text-align: center;
+    }
+
+    .reset {
+      height: 44px;
+      padding: 0 17px;
+      border: 1px solid var(--line);
+      border-radius: 11px;
+      color: var(--text);
+      background: var(--surface-3);
+      font-weight: 700;
+    }
+
+    .reset:hover { border-color: #41536b; }
+
+    .data-warning {
+      display: none;
+      margin: -2px 0 18px;
+      padding: 12px 15px;
+      border: 1px solid rgba(255, 200, 87, .34);
+      border-radius: 12px;
+      color: #ffe3a1;
+      background: rgba(255, 200, 87, .08);
+      font-size: .86rem;
+    }
+
+    .kpis {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .kpi { padding: 20px; min-height: 128px; }
+
+    .kpi-label {
+      color: var(--muted);
+      font-size: .8rem;
+      font-weight: 800;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+    }
+
+    .kpi-value {
+      margin-top: 9px;
+      font-size: clamp(1.6rem, 2.3vw, 2.35rem);
+      font-weight: 820;
+      letter-spacing: -.045em;
+      line-height: 1.05;
+    }
+
+    .kpi-note {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: .82rem;
+    }
+
+    .money-strip {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-height: 52px;
+      padding: 10px 14px;
+      margin-bottom: 16px;
+      overflow-x: auto;
+      scrollbar-width: thin;
+    }
+
+    .money-strip-label {
+      flex: 0 0 auto;
+      color: var(--muted);
+      font-size: .78rem;
+      font-weight: 800;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+
+    .money-pill {
+      flex: 0 0 auto;
+      padding: 7px 11px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--muted);
+      background: rgba(7, 16, 29, .42);
+      font-size: .83rem;
+    }
+
+    .money-pill strong { color: var(--text); }
+
+    .metric-banner {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      margin: 0 0 14px;
+      color: var(--muted);
+      font-size: .84rem;
+    }
+
+    .metric-banner span:first-child {
+      width: 9px;
+      height: 9px;
+      border-radius: 3px;
+      background: var(--accent);
+      box-shadow: 0 0 0 5px var(--accent-soft);
+    }
+
+    .charts {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+      align-items: stretch;
+      margin-bottom: 16px;
+    }
+
+    .chart-card { min-height: 540px; padding: 24px; }
+
+    .chart-card:not(.ticker-card) {
+      display: flex;
+      flex-direction: column;
+    }
+
+    #type-chart,
+    #currency-chart {
+      display: flex;
+      flex: 1;
+      align-items: center;
+      width: 100%;
+    }
+
+    .ticker-card {
+      grid-column: 1 / -1;
+      min-height: auto;
+    }
+
+    .card-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+
+    .card-head h2 {
+      margin: 0;
+      font-size: 1rem;
+      letter-spacing: -.015em;
+    }
+
+    .card-head p {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: .8rem;
+    }
+
+    .donut-wrap {
+      display: grid;
+      grid-template-columns: minmax(250px, 330px) minmax(170px, 220px);
+      gap: 22px;
+      align-items: center;
+      justify-content: center;
+      align-content: center;
+      width: 100%;
+      min-height: 425px;
+    }
+
+    .donut { width: 100%; max-width: 330px; margin: 0 auto; overflow: visible; }
+    .donut-track { fill: none; stroke: #1b2b40; stroke-width: 6; }
+    .donut-segment { cursor: pointer; fill: none; stroke-width: 6; transition: opacity .2s; }
+    .donut-segment:hover { opacity: .76; }
+    .donut-center-big { fill: var(--text); font-size: 2.95px; font-weight: 820; text-anchor: middle; }
+    .donut-center-small { fill: var(--muted); font-size: 2.1px; text-anchor: middle; }
+    .donut-percent {
+      pointer-events: none;
+      fill: #fff;
+      font-size: 2.15px;
+      font-weight: 850;
+      text-anchor: middle;
+      paint-order: stroke;
+      stroke: rgba(0, 0, 0, .25);
+      stroke-width: .45px;
+    }
+
+    .legend {
+      display: grid;
+      gap: 10px;
+      justify-self: center;
+      width: 100%;
+      min-width: 0;
+      max-width: 220px;
+    }
+
+    .legend-row {
+      display: grid;
+      grid-template-columns: 10px minmax(0, 1fr);
+      column-gap: 9px;
+      align-items: center;
+      width: 100%;
+      padding: 3px 0;
+      border: 0;
+      min-width: 0;
+      color: var(--muted);
+      background: transparent;
+      text-align: left;
+    }
+
+    .legend-row:hover .legend-name,
+    .legend-row:focus-visible .legend-name { color: var(--text); }
+
+    .legend-dot { grid-row: 1 / span 2; width: 9px; height: 9px; border-radius: 3px; }
+    .legend-name {
+      overflow-wrap: anywhere;
+      color: #d8e5f3;
+      font-size: .94rem;
+      font-weight: 760;
+      line-height: 1.12;
+    }
+    .legend-value {
+      grid-column: 2;
+      margin-top: 2px;
+      color: var(--muted);
+      font-size: .73rem;
+      font-weight: 700;
+      line-height: 1.1;
+      text-align: left;
+      white-space: nowrap;
+    }
+
+    .treemap {
+      position: relative;
+      width: 100%;
+      height: 520px;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #081321;
+    }
+
+    .tree-cell {
+      position: absolute;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      padding: 5px;
+      border: 3px solid #0d1828;
+      color: #fff;
+      text-align: center;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, .3);
+      transition: filter .16s, transform .16s;
+    }
+
+    button.tree-cell { cursor: pointer; font: inherit; }
+
+    .tree-cell:hover {
+      z-index: 2;
+      filter: brightness(1.13);
+    }
+
+    .tree-cell-name {
+      display: block;
+      overflow: hidden;
+      font-size: .76rem;
+      font-weight: 850;
+      line-height: 1.12;
+      text-overflow: ellipsis;
+    }
+
+    .tree-cell-detail {
+      display: block;
+      margin-top: 3px;
+      font-size: .67rem;
+      font-weight: 720;
+      line-height: 1.1;
+    }
+
+    .tree-cell.compact { padding: 3px; }
+    .tree-cell.compact .tree-cell-name { font-size: .66rem; }
+
+    .treemap-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 14px;
+      margin-top: 22px;
+      padding-top: 2px;
+    }
+
+    .treemap-legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--muted);
+      font-size: .73rem;
+    }
+
+    .treemap-legend-item span:first-child {
+      width: 9px;
+      height: 9px;
+      border-radius: 2px;
+    }
+
+    .table-card { overflow: hidden; }
+
+    .table-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 20px 21px 16px;
+    }
+
+    .table-top h2 { margin: 0; font-size: 1.08rem; }
+    .table-top p { margin: 4px 0 0; color: var(--muted); font-size: .82rem; }
+
+    .table-actions {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 12px;
+    }
+
+    .export-excel {
+      height: 40px;
+      padding: 0 15px;
+      border: 1px solid rgba(72, 214, 165, .42);
+      border-radius: 10px;
+      color: #06150f;
+      background: var(--accent);
+      font-size: .82rem;
+      font-weight: 820;
+      white-space: nowrap;
+      transition: filter .16s, transform .16s, opacity .16s;
+    }
+
+    .export-excel:hover { filter: brightness(1.06); transform: translateY(-1px); }
+    .export-excel:disabled { cursor: not-allowed; filter: none; opacity: .5; transform: none; }
+
+    .export-status {
+      min-width: 116px;
+      color: var(--muted);
+      font-size: .73rem;
+      line-height: 1.2;
+      text-align: right;
+    }
+
+    .page-size { display: flex; align-items: center; gap: 9px; color: var(--muted); font-size: .82rem; }
+    .page-size select { width: 76px; height: 37px; }
+
+    .table-scroll { overflow: auto; border-top: 1px solid var(--line); }
+
+    table {
+      width: 100%;
+      min-width: 1080px;
+      border-collapse: collapse;
+      font-size: .84rem;
+    }
+
+    th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+      color: var(--muted);
+      background: #0f1d2e;
+      font-size: .73rem;
+      letter-spacing: .045em;
+      text-align: left;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    th button {
+      padding: 0;
+      border: 0;
+      color: inherit;
+      background: transparent;
+      font-size: inherit;
+      font-weight: 800;
+      letter-spacing: inherit;
+      text-transform: inherit;
+    }
+
+    th button:hover, th button[aria-sort] { color: var(--text); }
+
+    td {
+      padding: 12px 14px;
+      border-bottom: 1px solid rgba(34, 51, 74, .7);
+      color: #dbe4ef;
+      vertical-align: middle;
+    }
+
+    tbody tr:hover { background: rgba(72, 214, 165, .035); }
+
+    .primary-cell { color: var(--text); font-weight: 720; }
+    .secondary-cell { display: block; margin-top: 2px; color: var(--muted); font-size: .74rem; }
+    .number { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      min-height: 25px;
+      padding: 3px 8px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: #c8d5e4;
+      background: rgba(7, 16, 29, .38);
+      font-size: .73rem;
+      font-weight: 700;
+    }
+
+    .pagination {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 14px 20px;
+      color: var(--muted);
+      font-size: .82rem;
+    }
+
+    .page-buttons { display: flex; align-items: center; gap: 10px; }
+
+    .page-btn {
+      min-width: 92px;
+      height: 38px;
+      padding: 0 13px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      color: var(--text);
+      background: var(--surface-3);
+      font-weight: 700;
+    }
+
+    .page-btn:disabled { cursor: not-allowed; opacity: .42; }
+
+    .empty {
+      display: grid;
+      min-height: 260px;
+      place-items: center;
+      padding: 30px;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .fatal {
+      display: none;
+      max-width: 720px;
+      margin: 80px auto;
+      padding: 28px;
+      border: 1px solid rgba(255, 125, 142, .35);
+      border-radius: var(--radius);
+      background: rgba(255, 125, 142, .08);
+    }
+
+    .fatal h2 { margin-top: 0; }
+    .fatal code { color: #ffd2d8; }
+
+    .drill-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      background: rgba(2, 8, 16, .76);
+      backdrop-filter: blur(7px);
+    }
+
+    .drill-overlay.open { display: flex; }
+
+    .drill-panel {
+      width: min(1320px, calc(100vw - 32px));
+      max-height: min(860px, calc(100vh - 32px));
+      overflow-y: auto;
+      scrollbar-gutter: stable;
+      padding: 28px 30px 30px;
+      border: 1px solid #31445f;
+      border-radius: 18px;
+      background: #0c1729;
+      box-shadow: 0 30px 90px rgba(0, 0, 0, .5);
+    }
+
+    .drill-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 22px;
+    }
+
+    .drill-eyebrow {
+      margin-bottom: 6px;
+      color: var(--accent);
+      font-size: .75rem;
+      font-weight: 820;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .drill-head h2 { margin: 0; font-size: 1.35rem; letter-spacing: -.025em; }
+    .drill-head p { margin: 6px 0 0; color: var(--muted); font-size: .84rem; }
+
+    .drill-close {
+      flex: 0 0 auto;
+      width: 38px;
+      height: 38px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      color: var(--text);
+      background: var(--surface-3);
+      font-size: 1.25rem;
+      line-height: 1;
+    }
+
+    .drill-back {
+      display: none;
+      margin: 0 0 14px;
+      padding: 0;
+      border: 0;
+      color: var(--accent);
+      background: transparent;
+      font-weight: 750;
+    }
+
+    .ranking {
+      display: grid;
+      gap: 0;
+      border-top: 1px solid rgba(49, 68, 95, .62);
+    }
+
+    .rank-row {
+      display: grid;
+      grid-template-columns: 34px minmax(300px, 390px) minmax(260px, 1fr) 130px;
+      gap: 18px;
+      align-items: center;
+      width: 100%;
+      min-height: 64px;
+      padding: 10px 6px;
+      border: 0;
+      border-bottom: 1px solid rgba(49, 68, 95, .48);
+      color: var(--text);
+      background: transparent;
+      text-align: left;
+    }
+
+    button.rank-row { cursor: pointer; }
+    button.rank-row:hover { background: rgba(91, 141, 239, .055); }
+
+    .rank-track {
+      height: 21px;
+      overflow: hidden;
+      border-radius: 4px;
+      background: #17263a;
+    }
+
+    .rank-fill {
+      display: block;
+      height: 100%;
+      min-width: 2px;
+      border-radius: inherit;
+      background: linear-gradient(90deg, #28bfd7, #35cfe2);
+    }
+
+    .rank-number { color: var(--muted); font-size: .82rem; font-weight: 800; }
+    .rank-info { min-width: 0; padding-right: 4px; }
+    .rank-name {
+      display: block;
+      overflow-wrap: anywhere;
+      font-weight: 760;
+      line-height: 1.25;
+      white-space: normal;
+    }
+    .rank-note {
+      display: block;
+      margin-top: 5px;
+      color: var(--muted);
+      font-size: .8rem;
+      line-height: 1.35;
+    }
+    .rank-value { font-weight: 800; text-align: right; white-space: nowrap; }
+
+    @media (max-width: 1380px) {
+      .filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .reset { width: 100%; }
+      .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+
+    @media (max-width: 1040px) {
+      .charts { grid-template-columns: 1fr; }
+      .ticker-card { grid-column: auto; }
+    }
+
+    @media (max-width: 900px) {
+      .drill-overlay { padding: 12px; }
+      .drill-panel {
+        width: 100%;
+        max-height: calc(100vh - 24px);
+        padding: 24px 20px;
+      }
+      .rank-row {
+        grid-template-columns: 30px minmax(0, 1fr) 116px;
+        grid-template-areas:
+          "number info value"
+          ". track track";
+        gap: 9px 14px;
+        padding: 12px 4px;
+      }
+      .rank-number { grid-area: number; }
+      .rank-info { grid-area: info; }
+      .rank-track { grid-area: track; height: 16px; }
+      .rank-value { grid-area: value; }
+    }
+
+    @media (max-width: 720px) {
+      .shell { width: min(100% - 24px, 1560px); padding-top: 22px; }
+      .topbar { display: block; }
+      .updated { display: inline-block; margin-top: 16px; white-space: normal; }
+      .filters, .kpis, .charts { grid-template-columns: 1fr; }
+      .donut-wrap { grid-template-columns: 1fr; }
+      .donut { max-width: 235px; }
+      .table-top, .pagination { align-items: flex-start; flex-direction: column; }
+      .table-actions { width: 100%; justify-content: flex-start; flex-wrap: wrap; }
+      .export-status { order: 3; width: 100%; text-align: left; }
+      .page-buttons { width: 100%; justify-content: space-between; }
+      .page-btn { flex: 1; }
+      .treemap { height: 440px; }
+      .drill-overlay { padding: 10px; }
+      .drill-panel { width: 100%; max-height: calc(100vh - 20px); padding: 20px 16px; }
+      .rank-row { grid-template-columns: 24px minmax(0, 1fr) 96px; gap: 8px 10px; padding: 10px 2px; }
+      .rank-track { height: 14px; }
+      .rank-value { text-align: right; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell" id="app">
+    <header class="topbar">
+      <div>
+        <div class="eyebrow">Equipo Sproviero</div>
+        <h1>Monitor de Tenencias</h1>
+        <p>Composición consolidada y detalle por cliente.</p>
+      </div>
+      <div class="updated" id="updated">Cargando datos…</div>
+    </header>
+
+    <section class="panel filters" aria-label="Filtros del dashboard">
+      <div class="field">
+        <label for="filter-fa">FA</label>
+        <select class="control" id="filter-fa"><option value="">Todos los FA</option></select>
+      </div>
+      <div class="field advisor-field">
+        <label for="filter-advisor" id="advisor-label">Asesor</label>
+        <div class="search-select" id="advisor-combobox">
+          <button class="control search-select-trigger" id="filter-advisor" type="button" aria-haspopup="listbox" aria-expanded="false" aria-controls="advisor-options" aria-labelledby="advisor-label advisor-selected">
+            <span id="advisor-selected">Todos los asesores</span>
+            <span class="search-select-chevron" aria-hidden="true">⌄</span>
+          </button>
+          <div class="search-select-popover" id="advisor-popover" hidden>
+            <input class="control search-select-input" id="advisor-search" type="search" placeholder="Buscar asesor…" autocomplete="off" aria-label="Buscar asesor">
+            <div class="search-select-options" id="advisor-options" role="listbox" aria-labelledby="advisor-label"></div>
+          </div>
+        </div>
+      </div>
+      <div class="field">
+        <label for="filter-currency">Moneda</label>
+        <select class="control" id="filter-currency"><option value="">Todas las monedas</option></select>
+      </div>
+      <div class="field">
+        <label for="filter-search">Cliente o activo</label>
+        <input class="control" id="filter-search" type="search" placeholder="Nombre, comitente, ticker…" autocomplete="off">
+      </div>
+      <button class="reset" id="reset-filters" type="button">Limpiar filtros</button>
+    </section>
+
+    <div class="data-warning" id="data-warning" role="status">
+      El exportador recortó al menos un Excel por volumen. Para completar los datos, generá lotes sin superposición y procesalos juntos.
+    </div>
+
+    <section class="kpis" aria-label="Indicadores principales">
+      <article class="panel kpi">
+        <div class="kpi-label">Clientes</div>
+        <div class="kpi-value" id="kpi-clients">—</div>
+        <div class="kpi-note">Comitentes únicos</div>
+      </article>
+      <article class="panel kpi">
+        <div class="kpi-label">Posiciones</div>
+        <div class="kpi-value" id="kpi-positions">—</div>
+        <div class="kpi-note">Filas consolidadas</div>
+      </article>
+      <article class="panel kpi">
+        <div class="kpi-label">Activos</div>
+        <div class="kpi-value" id="kpi-assets">—</div>
+        <div class="kpi-note">Tickers distintos</div>
+      </article>
+      <article class="panel kpi">
+        <div class="kpi-label">Tenencia total (USD)</div>
+        <div class="kpi-value" id="kpi-holdings">—</div>
+        <div class="kpi-note" id="kpi-holdings-note">Suma de la columna tenencia</div>
+      </article>
+    </section>
+
+    <section class="panel money-strip" id="money-strip" aria-label="Tenencia por moneda"></section>
+
+    <div class="metric-banner" id="metric-banner">
+      <span aria-hidden="true"></span>
+      <span>Cargando criterio de análisis…</span>
+    </div>
+
+    <section class="charts" aria-label="Composición de la cartera">
+      <article class="panel chart-card">
+        <div class="card-head">
+          <div>
+            <h2>Composición por tipo de activo</h2>
+            <p id="type-subtitle">Distribución de la cartera</p>
+          </div>
+        </div>
+        <div id="type-chart"></div>
+      </article>
+
+      <article class="panel chart-card">
+        <div class="card-head">
+          <div>
+            <h2>Composición por moneda</h2>
+            <p id="currency-subtitle">Distribución de la cartera</p>
+          </div>
+        </div>
+        <div id="currency-chart"></div>
+      </article>
+
+      <article class="panel chart-card ticker-card">
+        <div class="card-head">
+          <div>
+            <h2>Distribución por activo</h2>
+            <p id="ticker-subtitle">Principales tickers</p>
+          </div>
+        </div>
+        <div id="ticker-chart"></div>
+      </article>
+    </section>
+
+    <section class="panel table-card">
+      <div class="table-top">
+        <div>
+          <h2>Tenencias por cliente</h2>
+          <p id="table-summary">Preparando detalle…</p>
+        </div>
+        <div class="table-actions">
+          <button class="export-excel" id="export-excel" type="button">Descargar Excel</button>
+          <span class="export-status" id="export-status" aria-live="polite"></span>
+          <label class="page-size">Filas por página
+            <select class="control" id="page-size">
+              <option value="25">25</option>
+              <option value="50" selected>50</option>
+              <option value="100">100</option>
+            </select>
+          </label>
+        </div>
+      </div>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th><button type="button" data-sort="cuenta">Cliente</button></th>
+              <th><button type="button" data-sort="fa">FA</button></th>
+              <th><button type="button" data-sort="asesor">Asesor</button></th>
+              <th><button type="button" data-sort="ticker">Ticker</button></th>
+              <th><button type="button" data-sort="tipo">Tipo</button></th>
+              <th><button type="button" data-sort="moneda">Moneda</button></th>
+              <th class="number"><button type="button" data-sort="nominales">Nominales</button></th>
+              <th class="number"><button type="button" data-sort="tenencia">Tenencia USD</button></th>
+            </tr>
+          </thead>
+          <tbody id="holdings-body"></tbody>
+        </table>
+      </div>
+      <div class="pagination">
+        <span id="page-status">—</span>
+        <div class="page-buttons">
+          <button class="page-btn" id="prev-page" type="button">Anterior</button>
+          <button class="page-btn" id="next-page" type="button">Siguiente</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div class="drill-overlay" id="drill-overlay" aria-hidden="true">
+    <aside class="drill-panel" role="dialog" aria-modal="true" aria-labelledby="drill-title">
+      <div class="drill-head">
+        <div>
+          <div class="drill-eyebrow" id="drill-eyebrow">Detalle</div>
+          <h2 id="drill-title">Ranking</h2>
+          <p id="drill-subtitle"></p>
+        </div>
+        <button class="drill-close" id="drill-close" type="button" aria-label="Cerrar detalle">×</button>
+      </div>
+      <button class="drill-back" id="drill-back" type="button">← Volver a asesores</button>
+      <div id="drill-content"></div>
+    </aside>
+  </div>
+
+  <section class="fatal" id="fatal-error">
+    <h2>No pude cargar las tenencias</h2>
+    <p>Verificá que <code>datos_tenencias.js</code> esté en la misma carpeta que <code>index.html</code> y volvé a abrir la página.</p>
+  </section>
+
+  <script src="jszip.min.js"></script>
+  <script src="datos_tenencias.js"></script>
+  <script>
+    (() => {
+      'use strict';
+
+      const data = window.TENENCIAS_DATA;
+      if (!data || !Array.isArray(data.rows) || !data.dimensions) {
+        document.getElementById('app').style.display = 'none';
+        document.getElementById('fatal-error').style.display = 'block';
+        return;
+      }
+
+      const R = Object.freeze({
+        comitente: 0,
+        cuenta: 1,
+        tenencia: 2,
+        fa: 3,
+        asesor: 4,
+        ticker: 5,
+        nominales: 6,
+        instrumento: 7,
+        moneda: 8,
+        tipo: 9
+      });
+
+      const dims = data.dimensions;
+      const rows = data.rows;
+      const collator = new Intl.Collator('es', { numeric: true, sensitivity: 'base' });
+      const intFormat = new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 });
+      const valueFormat = new Intl.NumberFormat('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      const nominalFormat = new Intl.NumberFormat('es-AR', { maximumFractionDigits: 4 });
+      const compactFormat = new Intl.NumberFormat('es-AR', { notation: 'compact', maximumFractionDigits: 1 });
+
+      const state = {
+        fa: '',
+        advisor: '',
+        currency: '',
+        search: '',
+        page: 1,
+        pageSize: 50,
+        sortKey: 'tenencia',
+        sortDirection: 'desc',
+        filtered: [],
+        drill: null,
+        exporting: false
+      };
+
+      const els = {
+        fa: document.getElementById('filter-fa'),
+        advisor: document.getElementById('filter-advisor'),
+        advisorBox: document.getElementById('advisor-combobox'),
+        advisorSelected: document.getElementById('advisor-selected'),
+        advisorPopover: document.getElementById('advisor-popover'),
+        advisorSearch: document.getElementById('advisor-search'),
+        advisorOptions: document.getElementById('advisor-options'),
+        currency: document.getElementById('filter-currency'),
+        search: document.getElementById('filter-search'),
+        reset: document.getElementById('reset-filters'),
+        exportExcel: document.getElementById('export-excel'),
+        exportStatus: document.getElementById('export-status'),
+        pageSize: document.getElementById('page-size'),
+        prev: document.getElementById('prev-page'),
+        next: document.getElementById('next-page'),
+        body: document.getElementById('holdings-body'),
+        pageStatus: document.getElementById('page-status'),
+        tableSummary: document.getElementById('table-summary'),
+        metricBanner: document.getElementById('metric-banner'),
+        updated: document.getElementById('updated'),
+        drillOverlay: document.getElementById('drill-overlay'),
+        drillEyebrow: document.getElementById('drill-eyebrow'),
+        drillTitle: document.getElementById('drill-title'),
+        drillSubtitle: document.getElementById('drill-subtitle'),
+        drillContent: document.getElementById('drill-content'),
+        drillClose: document.getElementById('drill-close'),
+        drillBack: document.getElementById('drill-back')
+      };
+
+      const dimValue = (field, id) => dims[field][id] ?? 'Sin dato';
+      const normalize = value => String(value ?? '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .trim();
+
+      const escapeHtml = value => String(value ?? '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#039;');
+
+      function sortedDimensionIds(field, allowedIds = null) {
+        const ids = allowedIds ? [...allowedIds] : dims[field].map((_, index) => index);
+        return ids.sort((a, b) => {
+          const left = dimValue(field, a);
+          const right = dimValue(field, b);
+          if (left === 'Sin dato') return 1;
+          if (right === 'Sin dato') return -1;
+          return collator.compare(left, right);
+        });
+      }
+
+      function fillSelect(select, field, label, allowedIds = null, selected = '') {
+        const options = [`<option value="">${escapeHtml(label)}</option>`];
+        for (const id of sortedDimensionIds(field, allowedIds)) {
+          options.push(`<option value="${id}">${escapeHtml(dimValue(field, id))}</option>`);
+        }
+        select.innerHTML = options.join('');
+        select.value = selected;
+      }
+
+      let advisorOptionIds = [];
+
+      function updateAdvisorTrigger() {
+        els.advisorSelected.textContent = state.advisor === ''
+          ? 'Todos los asesores'
+          : dimValue('asesor', Number(state.advisor));
+      }
+
+      function renderAdvisorOptions() {
+        const query = normalize(els.advisorSearch.value);
+        const matches = advisorOptionIds.filter(id => !query || normalize(dimValue('asesor', id)).includes(query));
+        const options = [];
+
+        if (!query) {
+          options.push(
+            `<button class="search-select-option" type="button" role="option" data-advisor-id="" ` +
+            `aria-selected="${state.advisor === ''}">Todos los asesores</button>`
+          );
+        }
+
+        for (const id of matches) {
+          options.push(
+            `<button class="search-select-option" type="button" role="option" data-advisor-id="${id}" ` +
+            `aria-selected="${state.advisor === String(id)}">${escapeHtml(dimValue('asesor', id))}</button>`
+          );
+        }
+
+        els.advisorOptions.innerHTML = options.length
+          ? options.join('')
+          : '<div class="search-select-empty">No hay asesores que coincidan.</div>';
+      }
+
+      function setAdvisorOpen(open) {
+        els.advisor.setAttribute('aria-expanded', String(open));
+        els.advisorBox.classList.toggle('open', open);
+        els.advisorPopover.hidden = !open;
+        if (open) {
+          els.advisorSearch.value = '';
+          renderAdvisorOptions();
+          requestAnimationFrame(() => els.advisorSearch.focus());
+        }
+      }
+
+      function updateAdvisorOptions() {
+        const allowed = new Set();
+        for (const row of rows) {
+          if (state.fa === '' || row[R.fa] === Number(state.fa)) allowed.add(row[R.asesor]);
+        }
+        if (state.advisor !== '' && !allowed.has(Number(state.advisor))) state.advisor = '';
+        advisorOptionIds = sortedDimensionIds('asesor', allowed);
+        updateAdvisorTrigger();
+        renderAdvisorOptions();
+      }
+
+      function formatDate(iso) {
+        const date = new Date(iso);
+        if (Number.isNaN(date.getTime())) return 'Sin fecha';
+        return new Intl.DateTimeFormat('es-AR', {
+          day: '2-digit', month: '2-digit', year: 'numeric',
+          hour: '2-digit', minute: '2-digit'
+        }).format(date);
+      }
+
+      function formatUsd(value, compact = false) {
+        const number = compact ? compactFormat.format(value) : valueFormat.format(value);
+        return `USD ${number}`;
+      }
+
+      function formatCompactValue(value) {
+        return compactFormat.format(value);
+      }
+
+      function rowMatchesSearch(row, query) {
+        if (!query) return true;
+        return [
+          dimValue('cuenta', row[R.cuenta]),
+          dimValue('comitente', row[R.comitente]),
+          dimValue('ticker', row[R.ticker]),
+          dimValue('instrumento', row[R.instrumento])
+        ].some(value => normalize(value).includes(query));
+      }
+
+      function getFilteredRows() {
+        const fa = state.fa === '' ? null : Number(state.fa);
+        const advisor = state.advisor === '' ? null : Number(state.advisor);
+        const currency = state.currency === '' ? null : Number(state.currency);
+        const query = normalize(state.search);
+        const output = [];
+
+        for (let i = 0; i < rows.length; i += 1) {
+          const row = rows[i];
+          if (fa !== null && row[R.fa] !== fa) continue;
+          if (advisor !== null && row[R.asesor] !== advisor) continue;
+          if (currency !== null && row[R.moneda] !== currency) continue;
+          if (!rowMatchesSearch(row, query)) continue;
+          output.push(i);
+        }
+        return output;
+      }
+
+      function aggregate(indices, fieldIndex, useValue) {
+        const result = new Map();
+        for (const index of indices) {
+          const row = rows[index];
+          const id = row[fieldIndex];
+          const increment = useValue ? Math.max(0, Number(row[R.tenencia]) || 0) : 1;
+          result.set(id, (result.get(id) || 0) + increment);
+        }
+        return [...result.entries()].sort((a, b) => b[1] - a[1]);
+      }
+
+      function aggregateMoney(indices) {
+        const result = new Map();
+        for (const index of indices) {
+          const row = rows[index];
+          result.set(row[R.moneda], (result.get(row[R.moneda]) || 0) + (Number(row[R.tenencia]) || 0));
+        }
+        return [...result.entries()].sort((a, b) => b[1] - a[1]);
+      }
+
+      function compactCategories(entries, field, limit = 7) {
+        const visible = entries.slice(0, limit).map(([id, value]) => ({
+          ids: [id],
+          name: dimValue(field, id),
+          value
+        }));
+        if (entries.length > limit) {
+          const rest = entries.slice(limit);
+          visible.push({
+            ids: rest.map(([id]) => id),
+            name: 'Otros',
+            value: rest.reduce((sum, entry) => sum + entry[1], 0)
+          });
+        }
+        return visible;
+      }
+
+      function currencyColor(currency) {
+        const colors = {
+          ARS: '#f4b63f',
+          MEP: '#2fcf9f',
+          CCL: '#5b8def',
+          'USD-L': '#8b72e8',
+          EUR: '#ef68aa'
+        };
+        return colors[currency] || '#718299';
+      }
+
+      function donutMarkup(entries, field, drillKind, limit = 7) {
+        if (!entries.length) return '<div class="empty">No hay datos para mostrar.</div>';
+        const prepared = compactCategories(entries, field, limit);
+        const total = prepared.reduce((sum, entry) => sum + entry.value, 0);
+        if (total <= 0) return '<div class="empty">No hay valores positivos para graficar.</div>';
+
+        let offset = 0;
+        const circles = [];
+        const sliceLabels = [];
+        const legend = [];
+        prepared.forEach((item, index) => {
+          const percentage = item.value / total * 100;
+          const color = field === 'tipo'
+            ? (item.name === 'Otros' ? '#718299' : typeColor(item.name))
+            : currencyColor(item.name);
+          const detail = formatUsd(item.value, true);
+          const exactDetail = formatUsd(item.value);
+          const ids = item.ids.join(',');
+          const percentText = `${percentage.toFixed(1).replace('.', ',')}%`;
+          const drillAttrs = `data-drill-kind="${drillKind}" data-drill-ids="${ids}" data-drill-label="${escapeHtml(item.name)}"`;
+          circles.push(
+            `<circle class="donut-segment" cx="21" cy="21" r="15.9155" pathLength="100" ` +
+            `stroke="${color}" stroke-dasharray="${percentage} ${100 - percentage}" ` +
+            `stroke-dashoffset="${-offset}" transform="rotate(-90 21 21)" ${drillAttrs}>` +
+            `<title>${escapeHtml(item.name)}: ${escapeHtml(exactDetail)} · ${percentText}</title></circle>`
+          );
+          if (percentage >= 3.5) {
+            const angle = ((offset + percentage / 2) / 100) * Math.PI * 2 - Math.PI / 2;
+            const x = 21 + Math.cos(angle) * 15.9;
+            const y = 21 + Math.sin(angle) * 15.9 + .7;
+            sliceLabels.push(`<text class="donut-percent" x="${x}" y="${y}">${percentText}</text>`);
+          }
+          legend.push(
+            `<button class="legend-row" type="button" ${drillAttrs} title="${escapeHtml(exactDetail)} · Ver ranking de ${escapeHtml(item.name)}">` +
+            `<span class="legend-dot" style="background:${color}"></span>` +
+            `<span class="legend-name">${escapeHtml(item.name)}</span>` +
+            `<span class="legend-value">${escapeHtml(detail)}</span></button>`
+          );
+          offset += percentage;
+        });
+
+        const center = formatCompactValue(total);
+        return `<div class="donut-wrap"><svg class="donut" viewBox="0 0 42 42" role="img" aria-label="Gráfico de composición">` +
+          `<circle class="donut-track" cx="21" cy="21" r="15.9155"></circle>${circles.join('')}${sliceLabels.join('')}` +
+          `<text class="donut-center-big" x="21" y="20.5">${escapeHtml(center)}</text>` +
+          `<text class="donut-center-small" x="21" y="24.6">USD · tenencia</text></svg>` +
+          `<div class="legend">${legend.join('')}</div></div>`;
+      }
+
+      function typeColor(typeName) {
+        const colors = {
+          Cedears: '#5b8def',
+          Corporativos: '#8b72e8',
+          Bonos: '#2fcf9f',
+          Acciones: '#2bc2d7',
+          Fondos: '#ef68aa',
+          Letras: '#f4b63f',
+          Futuros: '#f27d6f',
+          Fideicomiso: '#60b7a6',
+          Efectivo: '#8ca0b8',
+          'US Treasuries': '#d3a75a',
+          Opciones: '#d77be7',
+          'Money Market': '#78b66b',
+          'Opciones Futuros': '#e28a57',
+          Cash_TBD: '#718299'
+        };
+        return colors[typeName] || '#718299';
+      }
+
+      function aggregateTickers(indices) {
+        const result = new Map();
+        for (const index of indices) {
+          const row = rows[index];
+          const tickerId = row[R.ticker];
+          const increment = Math.max(0, Number(row[R.tenencia]) || 0);
+          if (increment <= 0) continue;
+          if (!result.has(tickerId)) {
+            result.set(tickerId, {
+              id: tickerId,
+              value: 0,
+              typeWeights: new Map(),
+              instrumentId: row[R.instrumento]
+            });
+          }
+          const item = result.get(tickerId);
+          item.value += increment;
+          item.typeWeights.set(row[R.tipo], (item.typeWeights.get(row[R.tipo]) || 0) + increment);
+        }
+        return [...result.values()].map(item => {
+          item.typeId = [...item.typeWeights].sort((a, b) => b[1] - a[1])[0][0];
+          return item;
+        }).sort((a, b) => b.value - a.value);
+      }
+
+      function treemapWorst(row, side) {
+        if (!row.length || side <= 0) return Infinity;
+        const total = row.reduce((sum, item) => sum + item.area, 0);
+        const largest = Math.max(...row.map(item => item.area));
+        const smallest = Math.min(...row.map(item => item.area));
+        const sideSquared = side * side;
+        return Math.max(
+          sideSquared * largest / (total * total),
+          total * total / (sideSquared * smallest)
+        );
+      }
+
+      function treemapRow(row, rect, output) {
+        const rowArea = row.reduce((sum, item) => sum + item.area, 0);
+        if (rect.width >= rect.height) {
+          const rowWidth = rect.height ? rowArea / rect.height : 0;
+          let cursor = rect.y;
+          row.forEach(item => {
+            const itemHeight = rowWidth ? item.area / rowWidth : 0;
+            output.push({ ...item, x: rect.x, y: cursor, width: rowWidth, height: itemHeight });
+            cursor += itemHeight;
+          });
+          rect.x += rowWidth;
+          rect.width -= rowWidth;
+        } else {
+          const rowHeight = rect.width ? rowArea / rect.width : 0;
+          let cursor = rect.x;
+          row.forEach(item => {
+            const itemWidth = rowHeight ? item.area / rowHeight : 0;
+            output.push({ ...item, x: cursor, y: rect.y, width: itemWidth, height: rowHeight });
+            cursor += itemWidth;
+          });
+          rect.y += rowHeight;
+          rect.height -= rowHeight;
+        }
+      }
+
+      function squarifiedTreemap(items) {
+        const total = items.reduce((sum, item) => sum + item.value, 0);
+        if (!total) return [];
+        const remaining = items.map(item => ({ ...item, area: item.value / total * 10000 }));
+        const rect = { x: 0, y: 0, width: 100, height: 100 };
+        const output = [];
+        let row = [];
+
+        while (remaining.length) {
+          const next = remaining[0];
+          const side = Math.min(rect.width, rect.height);
+          if (!row.length || treemapWorst([...row, next], side) <= treemapWorst(row, side)) {
+            row.push(remaining.shift());
+          } else {
+            treemapRow(row, rect, output);
+            row = [];
+          }
+        }
+        if (row.length) treemapRow(row, rect, output);
+        return output;
+      }
+
+      function tickerTreemapMarkup(entries, indices) {
+        if (!entries.length) return '<div class="empty">No hay datos para mostrar.</div>';
+        const visible = entries.slice(0, 40);
+        const total = visible.reduce((sum, entry) => sum + entry.value, 0);
+        if (total <= 0) return '<div class="empty">No hay valores positivos para graficar.</div>';
+        const layout = squarifiedTreemap(visible);
+
+        const cells = layout.map(item => {
+          const name = dimValue('ticker', item.id);
+          const type = dimValue('tipo', item.typeId);
+          const instrument = dimValue('instrumento', item.instrumentId);
+          const percentage = item.value / total * 100;
+          const area = item.width * item.height;
+          const detail = formatUsd(item.value, true);
+          const percentText = `${percentage.toFixed(percentage >= 10 ? 1 : 2).replace('.', ',')}%`;
+          const showDetail = area >= 80 && item.width >= 8.5 && item.height >= 8;
+          const showPercent = area >= 38 && item.width >= 5.5 && item.height >= 5.5;
+          const showName = area >= 17 && item.width >= 3.7 && item.height >= 3.7;
+          const content = showDetail
+            ? `<span><span class="tree-cell-name">${escapeHtml(name)}</span><span class="tree-cell-detail">${escapeHtml(detail)}<br>${percentText}</span></span>`
+            : showPercent
+              ? `<span class="tree-cell-name">${escapeHtml(name)}<br>${percentText}</span>`
+              : showName
+                ? `<span class="tree-cell-name">${escapeHtml(name)}</span>`
+                : '';
+          const title = `${name} · ${type} · ${formatUsd(item.value)} · ${percentText} del Top 40 · ${instrument}`;
+          const style = `left:${item.x}%;top:${item.y}%;width:${item.width}%;height:${item.height}%;background:${typeColor(type)}`;
+          return `<button type="button" class="tree-cell${!showDetail ? ' compact' : ''}" style="${style}" ` +
+            `data-drill-kind="ticker" data-drill-ids="${item.id}" data-drill-label="${escapeHtml(name)}" ` +
+            `title="Ver ranking de ${escapeHtml(name)}" aria-label="${escapeHtml(title)}">${content}</button>`;
+        }).join('');
+
+        const typeEntries = aggregate(indices, R.tipo, true);
+        const mainTypes = typeEntries.slice(0, 6);
+        const legend = mainTypes.map(([id]) => {
+          const type = dimValue('tipo', id);
+          return `<span class="treemap-legend-item"><span style="background:${typeColor(type)}"></span>${escapeHtml(type)}</span>`;
+        }).join('');
+
+        return `<div class="treemap" role="img" aria-label="Top 40 de tickers por tenencia USD">${cells}</div>` +
+          `<div class="treemap-legend">${legend}</div>`;
+      }
+
+      function sortFiltered() {
+        const fieldIndex = R[state.sortKey];
+        const numeric = state.sortKey === 'tenencia' || state.sortKey === 'nominales';
+        const dimensionField = numeric ? null : state.sortKey;
+        const direction = state.sortDirection === 'asc' ? 1 : -1;
+
+        state.filtered.sort((indexA, indexB) => {
+          const rowA = rows[indexA];
+          const rowB = rows[indexB];
+          let result;
+          if (numeric) {
+            result = (Number(rowA[fieldIndex]) || 0) - (Number(rowB[fieldIndex]) || 0);
+          } else {
+            result = collator.compare(dimValue(dimensionField, rowA[fieldIndex]), dimValue(dimensionField, rowB[fieldIndex]));
+          }
+          return result * direction;
+        });
+      }
+
+      function renderKpis(indices) {
+        const clients = new Set();
+        const assets = new Set();
+        let total = 0;
+        for (const index of indices) {
+          const row = rows[index];
+          clients.add(row[R.comitente]);
+          assets.add(row[R.ticker]);
+          total += Number(row[R.tenencia]) || 0;
+        }
+        document.getElementById('kpi-clients').textContent = intFormat.format(clients.size);
+        document.getElementById('kpi-positions').textContent = intFormat.format(indices.length);
+        document.getElementById('kpi-assets').textContent = intFormat.format(assets.size);
+
+        document.getElementById('kpi-holdings').textContent = formatUsd(total, true);
+        document.getElementById('kpi-holdings-note').textContent = 'Suma de la columna tenencia';
+      }
+
+      function renderMoneyStrip(indices) {
+        const entries = aggregateMoney(indices);
+        const pills = entries.map(([id, value]) => {
+          const currency = dimValue('moneda', id);
+          return `<span class="money-pill">${escapeHtml(currency)} · <strong>${escapeHtml(formatUsd(value, true))}</strong></span>`;
+        });
+        document.getElementById('money-strip').innerHTML =
+          `<span class="money-strip-label">Tenencia USD por moneda</span>${pills.join('') || '<span class="money-pill">Sin datos</span>'}`;
+      }
+
+      function renderCharts(indices) {
+        const mode = 'por tenencia expresada en USD';
+        const tickerEntries = aggregateTickers(indices);
+        const tickerTotal = tickerEntries.reduce((sum, entry) => sum + entry.value, 0);
+        const visibleTickerTotal = tickerEntries.slice(0, 40).reduce((sum, entry) => sum + entry.value, 0);
+        const coverage = tickerTotal ? visibleTickerTotal / tickerTotal * 100 : 0;
+        const tickerCaption = tickerEntries.length > 40
+          ? `Top 40 de ${intFormat.format(tickerEntries.length)} tickers · concentra ${coverage.toFixed(1).replace('.', ',')}% del total`
+          : `${intFormat.format(tickerEntries.length)} tickers`;
+        els.metricBanner.lastElementChild.textContent = 'Todos los gráficos usan el valor USD informado en la columna tenencia.';
+        document.getElementById('type-subtitle').textContent = `${mode} · clic para ver detalle`;
+        document.getElementById('currency-subtitle').textContent = `${mode} · clic para ver detalle`;
+        document.getElementById('ticker-subtitle').textContent = `${tickerCaption} · ${mode} · clic para ver detalle`;
+
+        document.getElementById('type-chart').innerHTML = donutMarkup(aggregate(indices, R.tipo, true), 'tipo', 'type');
+        document.getElementById('currency-chart').innerHTML = donutMarkup(aggregate(indices, R.moneda, true), 'moneda', 'currency', 99);
+        document.getElementById('ticker-chart').innerHTML = tickerTreemapMarkup(tickerEntries, indices);
+      }
+
+      let lastFocusedElement = null;
+
+      function drillKindLabel(kind) {
+        return ({ currency: 'Moneda', type: 'Tipo de activo', ticker: 'Activo' })[kind] || 'Selección';
+      }
+
+      function drillSelectionIndices() {
+        if (!state.drill) return [];
+        const fieldIndex = ({ currency: R.moneda, type: R.tipo, ticker: R.ticker })[state.drill.kind];
+        const selectedIds = new Set(state.drill.ids);
+        return state.filtered.filter(index => selectedIds.has(rows[index][fieldIndex]));
+      }
+
+      function aggregateAdvisors(indices) {
+        const result = new Map();
+        for (const index of indices) {
+          const row = rows[index];
+          const advisorId = row[R.asesor];
+          if (!result.has(advisorId)) result.set(advisorId, { id: advisorId, value: 0, clients: new Set() });
+          const item = result.get(advisorId);
+          item.value += Math.max(0, Number(row[R.tenencia]) || 0);
+          item.clients.add(row[R.cuenta]);
+        }
+        return [...result.values()].sort((a, b) => b.value - a.value);
+      }
+
+      function aggregateClients(indices, advisorId) {
+        const result = new Map();
+        for (const index of indices) {
+          const row = rows[index];
+          if (row[R.asesor] !== advisorId) continue;
+          const clientId = row[R.cuenta];
+          if (!result.has(clientId)) {
+            result.set(clientId, { id: clientId, value: 0, comitentes: new Set() });
+          }
+          const item = result.get(clientId);
+          item.value += Math.max(0, Number(row[R.tenencia]) || 0);
+          item.comitentes.add(dimValue('comitente', row[R.comitente]));
+        }
+        return [...result.values()].sort((a, b) => b.value - a.value);
+      }
+
+      function advisorRankingMarkup(entries, selectionTotal) {
+        if (!entries.length) return '<div class="empty">No hay asesores para esta selección.</div>';
+        const visible = entries.slice(0, 10);
+        const max = visible[0].value || 1;
+        return `<div class="ranking">${visible.map((item, index) => {
+          const name = dimValue('asesor', item.id);
+          const share = selectionTotal ? item.value / selectionTotal * 100 : 0;
+          return `<button class="rank-row" type="button" data-drill-advisor="${item.id}">` +
+            `<span class="rank-number">${index + 1}</span>` +
+            `<span class="rank-info"><span class="rank-name">${escapeHtml(name)}</span>` +
+            `<span class="rank-note">${intFormat.format(item.clients.size)} clientes · ${share.toFixed(1).replace('.', ',')}%</span></span>` +
+            `<span class="rank-track" aria-hidden="true"><span class="rank-fill" style="width:${item.value / max * 100}%"></span></span>` +
+            `<span class="rank-value">${escapeHtml(formatUsd(item.value, true))}</span></button>`;
+        }).join('')}</div>`;
+      }
+
+      function clientRankingMarkup(entries, advisorTotal) {
+        if (!entries.length) return '<div class="empty">No hay clientes para esta selección.</div>';
+        const visible = entries.slice(0, 15);
+        const max = visible[0].value || 1;
+        return `<div class="ranking">${visible.map((item, index) => {
+          const name = dimValue('cuenta', item.id);
+          const share = advisorTotal ? item.value / advisorTotal * 100 : 0;
+          const ids = [...item.comitentes];
+          const accountText = ids.length > 1 ? `${ids[0]} y ${ids.length - 1} más` : ids[0];
+          return `<div class="rank-row">` +
+            `<span class="rank-number">${index + 1}</span>` +
+            `<span class="rank-info"><span class="rank-name">${escapeHtml(name)}</span>` +
+            `<span class="rank-note">Comitente ${escapeHtml(accountText)} · ${share.toFixed(1).replace('.', ',')}%</span></span>` +
+            `<span class="rank-track" aria-hidden="true"><span class="rank-fill" style="width:${item.value / max * 100}%"></span></span>` +
+            `<span class="rank-value">${escapeHtml(formatUsd(item.value, true))}</span></div>`;
+        }).join('')}</div>`;
+      }
+
+      function renderAdvisorRanking() {
+        if (!state.drill) return;
+        const indices = drillSelectionIndices();
+        const entries = aggregateAdvisors(indices);
+        const total = entries.reduce((sum, item) => sum + item.value, 0);
+        els.drillEyebrow.textContent = `${drillKindLabel(state.drill.kind)} seleccionado`;
+        els.drillTitle.textContent = state.drill.label;
+        els.drillSubtitle.textContent = `Top ${Math.min(10, entries.length)} asesores (IFA) por tenencia USD · ${formatUsd(total, true)} total`;
+        els.drillBack.style.display = 'none';
+        els.drillContent.innerHTML = advisorRankingMarkup(entries, total);
+        state.drill.advisorId = null;
+      }
+
+      function renderClientRanking(advisorId) {
+        if (!state.drill) return;
+        const indices = drillSelectionIndices();
+        const entries = aggregateClients(indices, advisorId);
+        const total = entries.reduce((sum, item) => sum + item.value, 0);
+        const advisor = dimValue('asesor', advisorId);
+        els.drillEyebrow.textContent = `${drillKindLabel(state.drill.kind)}: ${state.drill.label}`;
+        els.drillTitle.textContent = advisor;
+        els.drillSubtitle.textContent = `Top ${Math.min(15, entries.length)} clientes por tenencia USD · ${formatUsd(total, true)} total`;
+        els.drillBack.style.display = 'inline-block';
+        els.drillContent.innerHTML = clientRankingMarkup(entries, total);
+        state.drill.advisorId = advisorId;
+      }
+
+      function openDrill(kind, ids, label) {
+        if (!ids.length) return;
+        lastFocusedElement = document.activeElement;
+        state.drill = { kind, ids, label, advisorId: null };
+        renderAdvisorRanking();
+        els.drillOverlay.classList.add('open');
+        els.drillOverlay.setAttribute('aria-hidden', 'false');
+        document.body.style.overflow = 'hidden';
+        els.drillClose.focus();
+      }
+
+      function closeDrill() {
+        if (!state.drill) return;
+        state.drill = null;
+        els.drillOverlay.classList.remove('open');
+        els.drillOverlay.setAttribute('aria-hidden', 'true');
+        document.body.style.overflow = '';
+        if (lastFocusedElement && document.contains(lastFocusedElement)) lastFocusedElement.focus();
+        lastFocusedElement = null;
+      }
+
+      function xmlEscape(value) {
+        return String(value ?? '')
+          .replaceAll('&', '&amp;')
+          .replaceAll('<', '&lt;')
+          .replaceAll('>', '&gt;')
+          .replaceAll('"', '&quot;')
+          .replaceAll("'", '&apos;');
+      }
+
+      function excelColumn(index) {
+        let value = index + 1;
+        let output = '';
+        while (value > 0) {
+          value -= 1;
+          output = String.fromCharCode(65 + value % 26) + output;
+          value = Math.floor(value / 26);
+        }
+        return output;
+      }
+
+      function currentExportContext() {
+        return {
+          fa: state.fa === '' ? 'Todos los FA' : dimValue('fa', Number(state.fa)),
+          advisor: state.advisor === '' ? 'Todos los asesores' : dimValue('asesor', Number(state.advisor)),
+          currency: state.currency === '' ? 'Todas las monedas' : dimValue('moneda', Number(state.currency)),
+          search: state.search || 'Sin búsqueda',
+          generatedAt: new Intl.DateTimeFormat('es-AR', {
+            day: '2-digit', month: '2-digit', year: 'numeric',
+            hour: '2-digit', minute: '2-digit'
+          }).format(new Date())
+        };
+      }
+
+      async function yieldToBrowser() {
+        await new Promise(resolve => {
+          if (typeof requestAnimationFrame === 'function') requestAnimationFrame(resolve);
+          else setTimeout(resolve, 0);
+        });
+      }
+
+      async function buildExcelWorkbook(indices, filterContext) {
+        if (typeof JSZip === 'undefined') {
+          throw new Error('No se encontró jszip.min.js junto al index.html.');
+        }
+        if (indices.length > 1048575) {
+          throw new Error('La selección supera el máximo de filas de una hoja de Excel.');
+        }
+
+        const zip = new JSZip();
+        const sharedStrings = [];
+        const sharedIndex = new Map();
+        let sharedCount = 0;
+
+        function stringIndex(value) {
+          const text = String(value ?? '');
+          sharedCount += 1;
+          if (!sharedIndex.has(text)) {
+            sharedIndex.set(text, sharedStrings.length);
+            sharedStrings.push(text);
+          }
+          return sharedIndex.get(text);
+        }
+
+        function textCell(column, rowNumber, value, style = 0) {
+          const styleAttribute = style ? ' s="' + style + '"' : '';
+          return '<c r="' + column + rowNumber + '" t="s"' + styleAttribute + '><v>' +
+            stringIndex(value) + '</v></c>';
+        }
+
+        function numberCell(column, rowNumber, value, style) {
+          const number = Number(value);
+          if (!Number.isFinite(number)) return '<c r="' + column + rowNumber + '" s="' + style + '"/>';
+          return '<c r="' + column + rowNumber + '" s="' + style + '"><v>' + number + '</v></c>';
+        }
+
+        const headers = [
+          'Cliente', 'Comitente', 'FA', 'Asesor', 'Ticker',
+          'Instrumento', 'Tipo de activo', 'Moneda', 'Nominales', 'Tenencia USD'
+        ];
+        const lastDataRow = indices.length + 1;
+        const sheetParts = [
+          '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+          '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
+          '<dimension ref="A1:J' + lastDataRow + '"/>',
+          '<sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>',
+          '<sheetFormatPr defaultRowHeight="18"/>',
+          '<cols><col min="1" max="1" width="28" customWidth="1"/><col min="2" max="2" width="15" customWidth="1"/>' +
+            '<col min="3" max="3" width="17" customWidth="1"/><col min="4" max="4" width="28" customWidth="1"/>' +
+            '<col min="5" max="5" width="16" customWidth="1"/><col min="6" max="6" width="48" customWidth="1"/>' +
+            '<col min="7" max="7" width="20" customWidth="1"/><col min="8" max="8" width="13" customWidth="1"/>' +
+            '<col min="9" max="10" width="18" customWidth="1"/></cols>',
+          '<sheetData><row r="1" ht="24" customHeight="1">'
+        ];
+        headers.forEach((header, index) => {
+          sheetParts.push(textCell(excelColumn(index), 1, header, 1));
+        });
+        sheetParts.push('</row>');
+
+        for (let position = 0; position < indices.length; position += 1) {
+          const row = rows[indices[position]];
+          const rowNumber = position + 2;
+          const textValues = [
+            dimValue('cuenta', row[R.cuenta]),
+            dimValue('comitente', row[R.comitente]),
+            dimValue('fa', row[R.fa]),
+            dimValue('asesor', row[R.asesor]),
+            dimValue('ticker', row[R.ticker]),
+            dimValue('instrumento', row[R.instrumento]),
+            dimValue('tipo', row[R.tipo]),
+            dimValue('moneda', row[R.moneda])
+          ];
+          const cells = textValues.map((value, index) => textCell(excelColumn(index), rowNumber, value));
+          cells.push(numberCell('I', rowNumber, row[R.nominales], 2));
+          cells.push(numberCell('J', rowNumber, row[R.tenencia], 3));
+          sheetParts.push('<row r="' + rowNumber + '">' + cells.join('') + '</row>');
+
+          if (position > 0 && position % 4000 === 0) {
+            els.exportStatus.textContent = 'Preparando ' + intFormat.format(position) + ' de ' + intFormat.format(indices.length);
+            await yieldToBrowser();
+          }
+        }
+        sheetParts.push(
+          '</sheetData><autoFilter ref="A1:J' + lastDataRow + '"/>' +
+          '<pageMargins left="0.25" right="0.25" top="0.5" bottom="0.5" header="0.2" footer="0.2"/>' +
+          '</worksheet>'
+        );
+
+        const selectedTotal = indices.reduce((sum, index) => sum + (Number(rows[index][R.tenencia]) || 0), 0);
+        const filterRows = [
+          ['FA', filterContext.fa, 'text'],
+          ['Asesor', filterContext.advisor, 'text'],
+          ['Moneda', filterContext.currency, 'text'],
+          ['Búsqueda', filterContext.search, 'text'],
+          ['Posiciones exportadas', indices.length, 'integer'],
+          ['Tenencia total USD', selectedTotal, 'money'],
+          ['Generado', filterContext.generatedAt, 'text']
+        ];
+        const filterSheet = [
+          '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+          '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
+          '<dimension ref="A1:B' + (filterRows.length + 1) + '"/>',
+          '<sheetViews><sheetView workbookViewId="0"/></sheetViews>',
+          '<sheetFormatPr defaultRowHeight="19"/>',
+          '<cols><col min="1" max="1" width="24" customWidth="1"/><col min="2" max="2" width="44" customWidth="1"/></cols>',
+          '<sheetData><row r="1" ht="24" customHeight="1">' +
+            textCell('A', 1, 'Filtro', 1) + textCell('B', 1, 'Valor', 1) + '</row>'
+        ];
+        filterRows.forEach((item, index) => {
+          const rowNumber = index + 2;
+          let valueCell;
+          if (item[2] === 'integer') valueCell = numberCell('B', rowNumber, item[1], 2);
+          else if (item[2] === 'money') valueCell = numberCell('B', rowNumber, item[1], 3);
+          else valueCell = textCell('B', rowNumber, item[1]);
+          filterSheet.push('<row r="' + rowNumber + '">' + textCell('A', rowNumber, item[0]) + valueCell + '</row>');
+        });
+        filterSheet.push('</sheetData><pageMargins left="0.4" right="0.4" top="0.5" bottom="0.5" header="0.2" footer="0.2"/></worksheet>');
+
+        const now = new Date().toISOString();
+        const workbookXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+          '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" ' +
+          'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">' +
+          '<bookViews><workbookView/></bookViews><sheets>' +
+          '<sheet name="Tenencias" sheetId="1" r:id="rId1"/>' +
+          '<sheet name="Filtros aplicados" sheetId="2" r:id="rId2"/>' +
+          '</sheets><calcPr calcId="191029"/></workbook>';
+        const stylesXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+          '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
+          '<numFmts count="2"><numFmt numFmtId="164" formatCode="#,##0.####"/><numFmt numFmtId="165" formatCode="#,##0.00"/></numFmts>' +
+          '<fonts count="2"><font><sz val="10"/><name val="Aptos"/></font>' +
+          '<font><b/><color rgb="FFFFFFFF"/><sz val="10"/><name val="Aptos"/></font></fonts>' +
+          '<fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill>' +
+          '<fill><patternFill patternType="solid"><fgColor rgb="FF0F1D2E"/><bgColor indexed="64"/></patternFill></fill></fills>' +
+          '<borders count="2"><border><left/><right/><top/><bottom/><diagonal/></border>' +
+          '<border><left/><right/><top/><bottom style="thin"><color rgb="FFD9E2EC"/></bottom><diagonal/></border></borders>' +
+          '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>' +
+          '<cellXfs count="4"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"><alignment vertical="center"/></xf>' +
+          '<xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>' +
+          '<xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1" applyAlignment="1"><alignment horizontal="right" vertical="center"/></xf>' +
+          '<xf numFmtId="165" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1" applyAlignment="1"><alignment horizontal="right" vertical="center"/></xf></cellXfs>' +
+          '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>';
+        const sharedStringsXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+          '<sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" count="' + sharedCount +
+          '" uniqueCount="' + sharedStrings.length + '">' +
+          sharedStrings.map(value => '<si><t xml:space="preserve">' + xmlEscape(value) + '</t></si>').join('') +
+          '</sst>';
+        const workbookRels = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+          '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+          '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>' +
+          '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet2.xml"/>' +
+          '<Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>' +
+          '<Relationship Id="rId4" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/sharedStrings" Target="sharedStrings.xml"/>' +
+          '</Relationships>';
+        const rootRels = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+          '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+          '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>' +
+          '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/>' +
+          '<Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties" Target="docProps/app.xml"/>' +
+          '</Relationships>';
+        const contentTypes = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+          '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">' +
+          '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>' +
+          '<Default Extension="xml" ContentType="application/xml"/>' +
+          '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>' +
+          '<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>' +
+          '<Override PartName="/xl/worksheets/sheet2.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>' +
+          '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>' +
+          '<Override PartName="/xl/sharedStrings.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sharedStrings+xml"/>' +
+          '<Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>' +
+          '<Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>' +
+          '</Types>';
+        const coreProps = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+          '<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" ' +
+          'xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" ' +
+          'xmlns:dcmitype="http://purl.org/dc/dcmitype/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">' +
+          '<dc:title>Tenencias filtradas</dc:title><dc:creator>Monitor de Tenencias</dc:creator>' +
+          '<dcterms:created xsi:type="dcterms:W3CDTF">' + now + '</dcterms:created>' +
+          '<dcterms:modified xsi:type="dcterms:W3CDTF">' + now + '</dcterms:modified></cp:coreProperties>';
+        const appProps = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+          '<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties" ' +
+          'xmlns:vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes">' +
+          '<Application>Monitor de Tenencias</Application><TitlesOfParts><vt:vector size="2" baseType="lpstr">' +
+          '<vt:lpstr>Tenencias</vt:lpstr><vt:lpstr>Filtros aplicados</vt:lpstr></vt:vector></TitlesOfParts></Properties>';
+
+        zip.file('[Content_Types].xml', contentTypes);
+        zip.folder('_rels').file('.rels', rootRels);
+        zip.folder('docProps').file('core.xml', coreProps).file('app.xml', appProps);
+        zip.folder('xl').file('workbook.xml', workbookXml).file('styles.xml', stylesXml).file('sharedStrings.xml', sharedStringsXml);
+        zip.folder('xl').folder('_rels').file('workbook.xml.rels', workbookRels);
+        zip.folder('xl').folder('worksheets').file('sheet1.xml', sheetParts.join('')).file('sheet2.xml', filterSheet.join(''));
+
+        els.exportStatus.textContent = 'Comprimiendo archivo…';
+        await yieldToBrowser();
+        return zip.generateAsync({
+          type: 'blob',
+          compression: 'DEFLATE',
+          compressionOptions: { level: 4 },
+          mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        }, metadata => {
+          els.exportStatus.textContent = 'Comprimiendo ' + Math.round(metadata.percent) + '%';
+        });
+      }
+
+      function downloadBlob(blob, filename) {
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1500);
+      }
+
+      async function downloadFilteredExcel() {
+        if (!state.filtered.length || state.exporting) return;
+        const indices = [...state.filtered];
+        const filterContext = currentExportContext();
+        const hasFilters = state.fa !== '' || state.advisor !== '' || state.currency !== '' || Boolean(state.search);
+        const filename = 'tenencias_' + (hasFilters ? 'filtradas_' : 'completas_') + new Date().toISOString().slice(0, 10) + '.xlsx';
+
+        state.exporting = true;
+        els.exportExcel.disabled = true;
+        els.exportExcel.setAttribute('aria-busy', 'true');
+        els.exportExcel.textContent = 'Generando Excel…';
+        els.exportStatus.textContent = intFormat.format(indices.length) + ' posiciones';
+
+        try {
+          const blob = await buildExcelWorkbook(indices, filterContext);
+          downloadBlob(blob, filename);
+          els.exportStatus.textContent = intFormat.format(indices.length) + ' posiciones descargadas';
+        } catch (error) {
+          console.error(error);
+          els.exportStatus.textContent = 'No se pudo generar';
+          alert(error.message || 'No se pudo generar el Excel.');
+        } finally {
+          state.exporting = false;
+          els.exportExcel.disabled = !state.filtered.length;
+          els.exportExcel.removeAttribute('aria-busy');
+          els.exportExcel.textContent = 'Descargar Excel';
+        }
+      }
+
+      function renderTable() {
+        sortFiltered();
+        const totalPages = Math.max(1, Math.ceil(state.filtered.length / state.pageSize));
+        state.page = Math.min(state.page, totalPages);
+        const start = (state.page - 1) * state.pageSize;
+        const pageRows = state.filtered.slice(start, start + state.pageSize);
+
+        if (!pageRows.length) {
+          els.body.innerHTML = '<tr><td colspan="8"><div class="empty">No hay tenencias que coincidan con los filtros.</div></td></tr>';
+        } else {
+          els.body.innerHTML = pageRows.map(index => {
+            const row = rows[index];
+            const account = dimValue('cuenta', row[R.cuenta]);
+            const comitente = dimValue('comitente', row[R.comitente]);
+            const ticker = dimValue('ticker', row[R.ticker]);
+            const instrument = dimValue('instrumento', row[R.instrumento]);
+            const currency = dimValue('moneda', row[R.moneda]);
+            return `<tr>` +
+              `<td><span class="primary-cell">${escapeHtml(account)}</span><span class="secondary-cell">Comitente ${escapeHtml(comitente)}</span></td>` +
+              `<td>${escapeHtml(dimValue('fa', row[R.fa]))}</td>` +
+              `<td>${escapeHtml(dimValue('asesor', row[R.asesor]))}</td>` +
+              `<td><span class="primary-cell">${escapeHtml(ticker)}</span><span class="secondary-cell">${escapeHtml(instrument)}</span></td>` +
+              `<td><span class="tag">${escapeHtml(dimValue('tipo', row[R.tipo]))}</span></td>` +
+              `<td><span class="tag">${escapeHtml(currency)}</span></td>` +
+              `<td class="number">${nominalFormat.format(row[R.nominales])}</td>` +
+              `<td class="number primary-cell">${valueFormat.format(row[R.tenencia])}</td>` +
+              `</tr>`;
+          }).join('');
+        }
+
+        const firstShown = state.filtered.length ? start + 1 : 0;
+        const lastShown = Math.min(start + state.pageSize, state.filtered.length);
+        els.pageStatus.textContent = `${intFormat.format(firstShown)}–${intFormat.format(lastShown)} de ${intFormat.format(state.filtered.length)}`;
+        els.tableSummary.textContent = `${intFormat.format(state.filtered.length)} posiciones encontradas`;
+        els.prev.disabled = state.page <= 1;
+        els.next.disabled = state.page >= totalPages;
+        els.exportExcel.disabled = state.exporting || !state.filtered.length;
+        els.exportExcel.title = state.filtered.length
+          ? 'Descargar las ' + intFormat.format(state.filtered.length) + ' posiciones filtradas'
+          : 'No hay posiciones para descargar';
+        if (!state.exporting) els.exportStatus.textContent = '';
+
+        document.querySelectorAll('[data-sort]').forEach(button => {
+          button.removeAttribute('aria-sort');
+          if (button.dataset.sort === state.sortKey) {
+            button.setAttribute('aria-sort', state.sortDirection === 'asc' ? 'ascending' : 'descending');
+            button.textContent = `${button.dataset.label || button.textContent.replace(/[ ↑↓]$/, '')} ${state.sortDirection === 'asc' ? '↑' : '↓'}`;
+          } else {
+            button.textContent = button.textContent.replace(/[ ↑↓]$/, '');
+          }
+        });
+      }
+
+      function renderAll() {
+        closeDrill();
+        state.filtered = getFilteredRows();
+        renderKpis(state.filtered);
+        renderMoneyStrip(state.filtered);
+        renderCharts(state.filtered);
+        renderTable();
+      }
+
+      let searchTimer;
+      els.fa.addEventListener('change', () => {
+        state.fa = els.fa.value;
+        state.page = 1;
+        setAdvisorOpen(false);
+        updateAdvisorOptions();
+        renderAll();
+      });
+
+      els.advisor.addEventListener('click', () => {
+        setAdvisorOpen(els.advisor.getAttribute('aria-expanded') !== 'true');
+      });
+      els.advisorSearch.addEventListener('input', renderAdvisorOptions);
+      els.advisorSearch.addEventListener('keydown', event => {
+        if (event.key !== 'ArrowDown') return;
+        const firstOption = els.advisorOptions.querySelector('.search-select-option');
+        if (firstOption) {
+          event.preventDefault();
+          firstOption.focus();
+        }
+      });
+      els.advisorOptions.addEventListener('click', event => {
+        const option = event.target.closest('[data-advisor-id]');
+        if (!option) return;
+        state.advisor = option.dataset.advisorId;
+        state.page = 1;
+        updateAdvisorTrigger();
+        setAdvisorOpen(false);
+        els.advisor.focus();
+        renderAll();
+      });
+      els.advisorOptions.addEventListener('keydown', event => {
+        if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+        const options = [...els.advisorOptions.querySelectorAll('.search-select-option')];
+        const current = options.indexOf(document.activeElement);
+        const next = event.key === 'ArrowDown'
+          ? Math.min(options.length - 1, current + 1)
+          : Math.max(0, current - 1);
+        if (options[next]) {
+          event.preventDefault();
+          options[next].focus();
+        }
+      });
+      els.currency.addEventListener('change', () => {
+        state.currency = els.currency.value;
+        state.page = 1;
+        renderAll();
+      });
+      els.search.addEventListener('input', () => {
+        clearTimeout(searchTimer);
+        searchTimer = setTimeout(() => {
+          state.search = els.search.value;
+          state.page = 1;
+          renderAll();
+        }, 220);
+      });
+      els.pageSize.addEventListener('change', () => {
+        state.pageSize = Number(els.pageSize.value);
+        state.page = 1;
+        renderTable();
+      });
+      els.exportExcel.addEventListener('click', downloadFilteredExcel);
+      els.prev.addEventListener('click', () => {
+        state.page = Math.max(1, state.page - 1);
+        renderTable();
+      });
+      els.next.addEventListener('click', () => {
+        state.page += 1;
+        renderTable();
+      });
+      els.reset.addEventListener('click', () => {
+        Object.assign(state, { fa: '', advisor: '', currency: '', search: '', page: 1 });
+        els.fa.value = '';
+        els.currency.value = '';
+        els.search.value = '';
+        setAdvisorOpen(false);
+        updateAdvisorOptions();
+        renderAll();
+      });
+      document.querySelectorAll('[data-sort]').forEach(button => {
+        button.dataset.label = button.textContent;
+        button.addEventListener('click', () => {
+          const key = button.dataset.sort;
+          if (state.sortKey === key) state.sortDirection = state.sortDirection === 'asc' ? 'desc' : 'asc';
+          else {
+            state.sortKey = key;
+            state.sortDirection = key === 'tenencia' || key === 'nominales' ? 'desc' : 'asc';
+          }
+          renderTable();
+        });
+      });
+
+      document.querySelector('.charts').addEventListener('click', event => {
+        const target = event.target.closest('[data-drill-kind]');
+        if (!target) return;
+        const ids = String(target.dataset.drillIds || '')
+          .split(',')
+          .map(Number)
+          .filter(Number.isFinite);
+        openDrill(target.dataset.drillKind, ids, target.dataset.drillLabel || 'Selección');
+      });
+
+      els.drillContent.addEventListener('click', event => {
+        const target = event.target.closest('[data-drill-advisor]');
+        if (target) renderClientRanking(Number(target.dataset.drillAdvisor));
+      });
+      els.drillBack.addEventListener('click', renderAdvisorRanking);
+      els.drillClose.addEventListener('click', closeDrill);
+      els.drillOverlay.addEventListener('click', event => {
+        if (event.target === els.drillOverlay) closeDrill();
+      });
+      document.addEventListener('click', event => {
+        if (!els.advisorBox.contains(event.target)) setAdvisorOpen(false);
+      });
+      els.advisorBox.addEventListener('focusout', () => {
+        setTimeout(() => {
+          if (!els.advisorBox.contains(document.activeElement)) setAdvisorOpen(false);
+        }, 0);
+      });
+      document.addEventListener('keydown', event => {
+        if (event.key !== 'Escape') return;
+        if (els.advisor.getAttribute('aria-expanded') === 'true') {
+          setAdvisorOpen(false);
+          els.advisor.focus();
+          return;
+        }
+        if (state.drill) closeDrill();
+      });
+
+      fillSelect(els.fa, 'fa', 'Todos los FA');
+      fillSelect(els.currency, 'moneda', 'Todas las monedas');
+      updateAdvisorOptions();
+      els.updated.innerHTML = `Actualizado <strong>${escapeHtml(formatDate(data.meta.generatedAt))}</strong> · ${intFormat.format(data.meta.sourceRows)} filas fuente`;
+      if (data.meta.exportWarning) document.getElementById('data-warning').style.display = 'block';
+      renderAll();
+    })();
+  </script>
+</body>
+</html>
