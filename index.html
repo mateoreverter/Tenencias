@@ -147,10 +147,12 @@
       box-shadow: 0 0 0 3px var(--accent-soft);
     }
 
-    .advisor-field {
+    .multi-select-field {
       position: relative;
       z-index: 20;
     }
+
+    .multi-select-field:focus-within { z-index: 30; }
 
     .search-select { position: relative; }
 
@@ -892,11 +894,19 @@
     </header>
 
     <section class="panel filters" aria-label="Filtros del dashboard">
-      <div class="field">
-        <label for="filter-fa">FA</label>
-        <select class="control" id="filter-fa"><option value="">Todos los FA</option></select>
+      <div class="field multi-select-field">
+        <label for="filter-fa" id="fa-label">FA</label>
+        <div class="search-select" id="fa-combobox">
+          <button class="control search-select-trigger" id="filter-fa" type="button" aria-haspopup="listbox" aria-expanded="false" aria-controls="fa-options" aria-labelledby="fa-label fa-selected">
+            <span id="fa-selected">Todos los FA</span>
+            <span class="search-select-chevron" aria-hidden="true">⌄</span>
+          </button>
+          <div class="search-select-popover" id="fa-popover" hidden>
+            <div class="search-select-options" id="fa-options" role="listbox" aria-multiselectable="true" aria-labelledby="fa-label"></div>
+          </div>
+        </div>
       </div>
-      <div class="field advisor-field">
+      <div class="field multi-select-field">
         <label for="filter-advisor" id="advisor-label">Asesor</label>
         <div class="search-select" id="advisor-combobox">
           <button class="control search-select-trigger" id="filter-advisor" type="button" aria-haspopup="listbox" aria-expanded="false" aria-controls="advisor-options" aria-labelledby="advisor-label advisor-selected">
@@ -905,13 +915,21 @@
           </button>
           <div class="search-select-popover" id="advisor-popover" hidden>
             <input class="control search-select-input" id="advisor-search" type="search" placeholder="Buscar asesor…" autocomplete="off" aria-label="Buscar asesor">
-            <div class="search-select-options" id="advisor-options" role="listbox" aria-labelledby="advisor-label"></div>
+            <div class="search-select-options" id="advisor-options" role="listbox" aria-multiselectable="true" aria-labelledby="advisor-label"></div>
           </div>
         </div>
       </div>
-      <div class="field">
-        <label for="filter-currency">Moneda</label>
-        <select class="control" id="filter-currency"><option value="">Todas las monedas</option></select>
+      <div class="field multi-select-field">
+        <label for="filter-currency" id="currency-label">Moneda</label>
+        <div class="search-select" id="currency-combobox">
+          <button class="control search-select-trigger" id="filter-currency" type="button" aria-haspopup="listbox" aria-expanded="false" aria-controls="currency-options" aria-labelledby="currency-label currency-selected">
+            <span id="currency-selected">Todas las monedas</span>
+            <span class="search-select-chevron" aria-hidden="true">⌄</span>
+          </button>
+          <div class="search-select-popover" id="currency-popover" hidden>
+            <div class="search-select-options" id="currency-options" role="listbox" aria-multiselectable="true" aria-labelledby="currency-label"></div>
+          </div>
+        </div>
       </div>
       <div class="field">
         <label for="filter-search">Cliente o activo</label>
@@ -1086,9 +1104,9 @@
       const compactFormat = new Intl.NumberFormat('es-AR', { notation: 'compact', maximumFractionDigits: 1 });
 
       const state = {
-        fa: '',
-        advisor: '',
-        currency: '',
+        fa: new Set(),
+        advisor: new Set(),
+        currency: new Set(),
         search: '',
         page: 1,
         pageSize: 50,
@@ -1101,6 +1119,10 @@
 
       const els = {
         fa: document.getElementById('filter-fa'),
+        faBox: document.getElementById('fa-combobox'),
+        faSelected: document.getElementById('fa-selected'),
+        faPopover: document.getElementById('fa-popover'),
+        faOptions: document.getElementById('fa-options'),
         advisor: document.getElementById('filter-advisor'),
         advisorBox: document.getElementById('advisor-combobox'),
         advisorSelected: document.getElementById('advisor-selected'),
@@ -1108,6 +1130,10 @@
         advisorSearch: document.getElementById('advisor-search'),
         advisorOptions: document.getElementById('advisor-options'),
         currency: document.getElementById('filter-currency'),
+        currencyBox: document.getElementById('currency-combobox'),
+        currencySelected: document.getElementById('currency-selected'),
+        currencyPopover: document.getElementById('currency-popover'),
+        currencyOptions: document.getElementById('currency-options'),
         search: document.getElementById('filter-search'),
         reset: document.getElementById('reset-filters'),
         exportExcel: document.getElementById('export-excel'),
@@ -1154,67 +1180,146 @@
         });
       }
 
-      function fillSelect(select, field, label, allowedIds = null, selected = '') {
-        const options = [`<option value="">${escapeHtml(label)}</option>`];
-        for (const id of sortedDimensionIds(field, allowedIds)) {
-          options.push(`<option value="${id}">${escapeHtml(dimValue(field, id))}</option>`);
+      const multiSelects = {
+        fa: {
+          field: 'fa',
+          allLabel: 'Todos los FA',
+          countLabel: 'FA seleccionados',
+          trigger: els.fa,
+          box: els.faBox,
+          selected: els.faSelected,
+          popover: els.faPopover,
+          options: els.faOptions,
+          search: null,
+          optionIds: sortedDimensionIds('fa')
+        },
+        advisor: {
+          field: 'asesor',
+          allLabel: 'Todos los asesores',
+          countLabel: 'asesores seleccionados',
+          trigger: els.advisor,
+          box: els.advisorBox,
+          selected: els.advisorSelected,
+          popover: els.advisorPopover,
+          options: els.advisorOptions,
+          search: els.advisorSearch,
+          optionIds: []
+        },
+        currency: {
+          field: 'moneda',
+          allLabel: 'Todas las monedas',
+          countLabel: 'monedas seleccionadas',
+          trigger: els.currency,
+          box: els.currencyBox,
+          selected: els.currencySelected,
+          popover: els.currencyPopover,
+          options: els.currencyOptions,
+          search: null,
+          optionIds: sortedDimensionIds('moneda')
         }
-        select.innerHTML = options.join('');
-        select.value = selected;
+      };
+
+      function updateMultiSelectTrigger(key) {
+        const config = multiSelects[key];
+        const selected = state[key];
+        if (!selected.size) config.selected.textContent = config.allLabel;
+        else if (selected.size === 1) config.selected.textContent = dimValue(config.field, [...selected][0]);
+        else config.selected.textContent = `${selected.size} ${config.countLabel}`;
       }
 
-      let advisorOptionIds = [];
-
-      function updateAdvisorTrigger() {
-        els.advisorSelected.textContent = state.advisor === ''
-          ? 'Todos los asesores'
-          : dimValue('asesor', Number(state.advisor));
-      }
-
-      function renderAdvisorOptions() {
-        const query = normalize(els.advisorSearch.value);
-        const matches = advisorOptionIds.filter(id => !query || normalize(dimValue('asesor', id)).includes(query));
+      function renderMultiSelectOptions(key) {
+        const config = multiSelects[key];
+        const selected = state[key];
+        const query = config.search ? normalize(config.search.value) : '';
+        const previousScroll = config.options.scrollTop;
+        const matches = config.optionIds.filter(id => !query || normalize(dimValue(config.field, id)).includes(query));
         const options = [];
 
         if (!query) {
           options.push(
-            `<button class="search-select-option" type="button" role="option" data-advisor-id="" ` +
-            `aria-selected="${state.advisor === ''}">Todos los asesores</button>`
+            `<button class="search-select-option" type="button" role="option" data-filter-id="" ` +
+            `aria-selected="${selected.size === 0}">${escapeHtml(config.allLabel)}</button>`
           );
         }
 
         for (const id of matches) {
           options.push(
-            `<button class="search-select-option" type="button" role="option" data-advisor-id="${id}" ` +
-            `aria-selected="${state.advisor === String(id)}">${escapeHtml(dimValue('asesor', id))}</button>`
+            `<button class="search-select-option" type="button" role="option" data-filter-id="${id}" ` +
+            `aria-selected="${selected.has(id)}">${escapeHtml(dimValue(config.field, id))}</button>`
           );
         }
 
-        els.advisorOptions.innerHTML = options.length
+        config.options.innerHTML = options.length
           ? options.join('')
-          : '<div class="search-select-empty">No hay asesores que coincidan.</div>';
+          : '<div class="search-select-empty">No hay opciones que coincidan.</div>';
+        config.options.scrollTop = previousScroll;
       }
 
-      function setAdvisorOpen(open) {
-        els.advisor.setAttribute('aria-expanded', String(open));
-        els.advisorBox.classList.toggle('open', open);
-        els.advisorPopover.hidden = !open;
-        if (open) {
-          els.advisorSearch.value = '';
-          renderAdvisorOptions();
-          requestAnimationFrame(() => els.advisorSearch.focus());
+      function updateMultiSelectIndicators(key) {
+        const config = multiSelects[key];
+        const selected = state[key];
+        config.options.querySelectorAll('[data-filter-id]').forEach(option => {
+          const rawId = option.dataset.filterId;
+          const isSelected = rawId === '' ? selected.size === 0 : selected.has(Number(rawId));
+          option.setAttribute('aria-selected', String(isSelected));
+        });
+      }
+
+      function setMultiSelectOpen(key, open) {
+        for (const [candidateKey, config] of Object.entries(multiSelects)) {
+          const isOpen = candidateKey === key && open;
+          config.trigger.setAttribute('aria-expanded', String(isOpen));
+          config.box.classList.toggle('open', isOpen);
+          config.popover.hidden = !isOpen;
         }
+
+        if (!open || !multiSelects[key]) return;
+        const config = multiSelects[key];
+        if (config.search) config.search.value = '';
+        renderMultiSelectOptions(key);
+        config.options.scrollTop = 0;
+        requestAnimationFrame(() => {
+          if (config.search) config.search.focus();
+          else config.options.querySelector('[aria-selected="true"]')?.focus();
+        });
       }
 
       function updateAdvisorOptions() {
         const allowed = new Set();
         for (const row of rows) {
-          if (state.fa === '' || row[R.fa] === Number(state.fa)) allowed.add(row[R.asesor]);
+          if (!state.fa.size || state.fa.has(row[R.fa])) allowed.add(row[R.asesor]);
         }
-        if (state.advisor !== '' && !allowed.has(Number(state.advisor))) state.advisor = '';
-        advisorOptionIds = sortedDimensionIds('asesor', allowed);
-        updateAdvisorTrigger();
-        renderAdvisorOptions();
+        for (const id of [...state.advisor]) {
+          if (!allowed.has(id)) state.advisor.delete(id);
+        }
+        multiSelects.advisor.optionIds = sortedDimensionIds('asesor', allowed);
+        updateMultiSelectTrigger('advisor');
+        renderMultiSelectOptions('advisor');
+      }
+
+      function toggleMultiSelection(key, rawId) {
+        const selected = state[key];
+        if (rawId === '') selected.clear();
+        else {
+          const id = Number(rawId);
+          if (selected.has(id)) selected.delete(id);
+          else selected.add(id);
+        }
+
+        state.page = 1;
+        updateMultiSelectTrigger(key);
+        updateMultiSelectIndicators(key);
+        if (key === 'fa') updateAdvisorOptions();
+        renderAll();
+      }
+
+      function multiSelectionText(key) {
+        const config = multiSelects[key];
+        if (!state[key].size) return config.allLabel;
+        return [...state[key]]
+          .map(id => dimValue(config.field, id))
+          .sort(collator.compare)
+          .join(', ');
       }
 
       function formatDate(iso) {
@@ -1246,17 +1351,14 @@
       }
 
       function getFilteredRows() {
-        const fa = state.fa === '' ? null : Number(state.fa);
-        const advisor = state.advisor === '' ? null : Number(state.advisor);
-        const currency = state.currency === '' ? null : Number(state.currency);
         const query = normalize(state.search);
         const output = [];
 
         for (let i = 0; i < rows.length; i += 1) {
           const row = rows[i];
-          if (fa !== null && row[R.fa] !== fa) continue;
-          if (advisor !== null && row[R.asesor] !== advisor) continue;
-          if (currency !== null && row[R.moneda] !== currency) continue;
+          if (state.fa.size && !state.fa.has(row[R.fa])) continue;
+          if (state.advisor.size && !state.advisor.has(row[R.asesor])) continue;
+          if (state.currency.size && !state.currency.has(row[R.moneda])) continue;
           if (!rowMatchesSearch(row, query)) continue;
           output.push(i);
         }
@@ -1719,9 +1821,9 @@
 
       function currentExportContext() {
         return {
-          fa: state.fa === '' ? 'Todos los FA' : dimValue('fa', Number(state.fa)),
-          advisor: state.advisor === '' ? 'Todos los asesores' : dimValue('asesor', Number(state.advisor)),
-          currency: state.currency === '' ? 'Todas las monedas' : dimValue('moneda', Number(state.currency)),
+          fa: multiSelectionText('fa'),
+          advisor: multiSelectionText('advisor'),
+          currency: multiSelectionText('currency'),
           search: state.search || 'Sin búsqueda',
           generatedAt: new Intl.DateTimeFormat('es-AR', {
             day: '2-digit', month: '2-digit', year: 'numeric',
@@ -1954,7 +2056,7 @@
         if (!state.filtered.length || state.exporting) return;
         const indices = [...state.filtered];
         const filterContext = currentExportContext();
-        const hasFilters = state.fa !== '' || state.advisor !== '' || state.currency !== '' || Boolean(state.search);
+        const hasFilters = state.fa.size > 0 || state.advisor.size > 0 || state.currency.size > 0 || Boolean(state.search);
         const filename = 'tenencias_' + (hasFilters ? 'filtradas_' : 'completas_') + new Date().toISOString().slice(0, 10) + '.xlsx';
 
         state.exporting = true;
@@ -2042,53 +2144,50 @@
       }
 
       let searchTimer;
-      els.fa.addEventListener('change', () => {
-        state.fa = els.fa.value;
-        state.page = 1;
-        setAdvisorOpen(false);
-        updateAdvisorOptions();
-        renderAll();
-      });
+      for (const [key, config] of Object.entries(multiSelects)) {
+        config.trigger.addEventListener('click', () => {
+          setMultiSelectOpen(key, config.trigger.getAttribute('aria-expanded') !== 'true');
+        });
 
-      els.advisor.addEventListener('click', () => {
-        setAdvisorOpen(els.advisor.getAttribute('aria-expanded') !== 'true');
-      });
-      els.advisorSearch.addEventListener('input', renderAdvisorOptions);
-      els.advisorSearch.addEventListener('keydown', event => {
-        if (event.key !== 'ArrowDown') return;
-        const firstOption = els.advisorOptions.querySelector('.search-select-option');
-        if (firstOption) {
-          event.preventDefault();
-          firstOption.focus();
+        if (config.search) {
+          config.search.addEventListener('input', () => renderMultiSelectOptions(key));
+          config.search.addEventListener('keydown', event => {
+            if (event.key !== 'ArrowDown') return;
+            const firstOption = config.options.querySelector('.search-select-option');
+            if (firstOption) {
+              event.preventDefault();
+              firstOption.focus();
+            }
+          });
         }
-      });
-      els.advisorOptions.addEventListener('click', event => {
-        const option = event.target.closest('[data-advisor-id]');
-        if (!option) return;
-        state.advisor = option.dataset.advisorId;
-        state.page = 1;
-        updateAdvisorTrigger();
-        setAdvisorOpen(false);
-        els.advisor.focus();
-        renderAll();
-      });
-      els.advisorOptions.addEventListener('keydown', event => {
-        if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
-        const options = [...els.advisorOptions.querySelectorAll('.search-select-option')];
-        const current = options.indexOf(document.activeElement);
-        const next = event.key === 'ArrowDown'
-          ? Math.min(options.length - 1, current + 1)
-          : Math.max(0, current - 1);
-        if (options[next]) {
-          event.preventDefault();
-          options[next].focus();
-        }
-      });
-      els.currency.addEventListener('change', () => {
-        state.currency = els.currency.value;
-        state.page = 1;
-        renderAll();
-      });
+
+        config.options.addEventListener('click', event => {
+          const option = event.target.closest('[data-filter-id]');
+          if (!option) return;
+          toggleMultiSelection(key, option.dataset.filterId);
+        });
+
+        config.options.addEventListener('keydown', event => {
+          if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+          const options = [...config.options.querySelectorAll('.search-select-option')];
+          const current = options.indexOf(document.activeElement);
+          const next = event.key === 'ArrowDown'
+            ? Math.min(options.length - 1, current + 1)
+            : Math.max(0, current - 1);
+          if (options[next]) {
+            event.preventDefault();
+            options[next].focus();
+          }
+        });
+
+        config.box.addEventListener('focusout', () => {
+          setTimeout(() => {
+            const focusInsideAny = Object.values(multiSelects).some(item => item.box.contains(document.activeElement));
+            if (!focusInsideAny) setMultiSelectOpen('', false);
+          }, 0);
+        });
+      }
+
       els.search.addEventListener('input', () => {
         clearTimeout(searchTimer);
         searchTimer = setTimeout(() => {
@@ -2112,11 +2211,13 @@
         renderTable();
       });
       els.reset.addEventListener('click', () => {
-        Object.assign(state, { fa: '', advisor: '', currency: '', search: '', page: 1 });
-        els.fa.value = '';
-        els.currency.value = '';
+        Object.assign(state, { fa: new Set(), advisor: new Set(), currency: new Set(), search: '', page: 1 });
         els.search.value = '';
-        setAdvisorOpen(false);
+        setMultiSelectOpen('', false);
+        updateMultiSelectTrigger('fa');
+        updateMultiSelectTrigger('currency');
+        renderMultiSelectOptions('fa');
+        renderMultiSelectOptions('currency');
         updateAdvisorOptions();
         renderAll();
       });
@@ -2153,25 +2254,24 @@
         if (event.target === els.drillOverlay) closeDrill();
       });
       document.addEventListener('click', event => {
-        if (!els.advisorBox.contains(event.target)) setAdvisorOpen(false);
-      });
-      els.advisorBox.addEventListener('focusout', () => {
-        setTimeout(() => {
-          if (!els.advisorBox.contains(document.activeElement)) setAdvisorOpen(false);
-        }, 0);
+        const clickedInside = Object.values(multiSelects).some(config => config.box.contains(event.target));
+        if (!clickedInside) setMultiSelectOpen('', false);
       });
       document.addEventListener('keydown', event => {
         if (event.key !== 'Escape') return;
-        if (els.advisor.getAttribute('aria-expanded') === 'true') {
-          setAdvisorOpen(false);
-          els.advisor.focus();
+        const openEntry = Object.entries(multiSelects).find(([, config]) => config.trigger.getAttribute('aria-expanded') === 'true');
+        if (openEntry) {
+          setMultiSelectOpen('', false);
+          openEntry[1].trigger.focus();
           return;
         }
         if (state.drill) closeDrill();
       });
 
-      fillSelect(els.fa, 'fa', 'Todos los FA');
-      fillSelect(els.currency, 'moneda', 'Todas las monedas');
+      updateMultiSelectTrigger('fa');
+      updateMultiSelectTrigger('currency');
+      renderMultiSelectOptions('fa');
+      renderMultiSelectOptions('currency');
       updateAdvisorOptions();
       els.updated.innerHTML = `Actualizado <strong>${escapeHtml(formatDate(data.meta.generatedAt))}</strong> · ${intFormat.format(data.meta.sourceRows)} filas fuente`;
       if (data.meta.exportWarning) document.getElementById('data-warning').style.display = 'block';
