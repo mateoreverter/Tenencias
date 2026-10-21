@@ -111,7 +111,7 @@
 
     .filters {
       display: grid;
-      grid-template-columns: minmax(180px, 1fr) minmax(220px, 1.35fr) minmax(150px, .75fr) minmax(240px, 1.5fr) auto;
+      grid-template-columns: minmax(150px, 1fr) minmax(190px, 1.2fr) minmax(145px, .9fr) minmax(175px, 1.1fr) minmax(205px, 1.3fr) auto;
       gap: 14px;
       align-items: end;
       padding: 18px;
@@ -931,6 +931,18 @@
           </div>
         </div>
       </div>
+      <div class="field multi-select-field">
+        <label for="filter-type" id="type-label">Tipo de activo</label>
+        <div class="search-select" id="type-combobox">
+          <button class="control search-select-trigger" id="filter-type" type="button" aria-haspopup="listbox" aria-expanded="false" aria-controls="type-options" aria-labelledby="type-label type-selected">
+            <span id="type-selected">Todos los tipos</span>
+            <span class="search-select-chevron" aria-hidden="true">⌄</span>
+          </button>
+          <div class="search-select-popover" id="type-popover" hidden>
+            <div class="search-select-options" id="type-options" role="listbox" aria-multiselectable="true" aria-labelledby="type-label"></div>
+          </div>
+        </div>
+      </div>
       <div class="field">
         <label for="filter-search">Cliente o activo</label>
         <input class="control" id="filter-search" type="search" placeholder="Nombre, comitente, ticker…" autocomplete="off">
@@ -1107,6 +1119,7 @@
         fa: new Set(),
         advisor: new Set(),
         currency: new Set(),
+        type: new Set(),
         search: '',
         page: 1,
         pageSize: 50,
@@ -1134,6 +1147,11 @@
         currencySelected: document.getElementById('currency-selected'),
         currencyPopover: document.getElementById('currency-popover'),
         currencyOptions: document.getElementById('currency-options'),
+        type: document.getElementById('filter-type'),
+        typeBox: document.getElementById('type-combobox'),
+        typeSelected: document.getElementById('type-selected'),
+        typePopover: document.getElementById('type-popover'),
+        typeOptions: document.getElementById('type-options'),
         search: document.getElementById('filter-search'),
         reset: document.getElementById('reset-filters'),
         exportExcel: document.getElementById('export-excel'),
@@ -1216,6 +1234,18 @@
           options: els.currencyOptions,
           search: null,
           optionIds: sortedDimensionIds('moneda')
+        },
+        type: {
+          field: 'tipo',
+          allLabel: 'Todos los tipos',
+          countLabel: 'tipos seleccionados',
+          trigger: els.type,
+          box: els.typeBox,
+          selected: els.typeSelected,
+          popover: els.typePopover,
+          options: els.typeOptions,
+          search: null,
+          optionIds: sortedDimensionIds('tipo')
         }
       };
 
@@ -1359,6 +1389,7 @@
           if (state.fa.size && !state.fa.has(row[R.fa])) continue;
           if (state.advisor.size && !state.advisor.has(row[R.asesor])) continue;
           if (state.currency.size && !state.currency.has(row[R.moneda])) continue;
+          if (state.type.size && !state.type.has(row[R.tipo])) continue;
           if (!rowMatchesSearch(row, query)) continue;
           output.push(i);
         }
@@ -1824,6 +1855,7 @@
           fa: multiSelectionText('fa'),
           advisor: multiSelectionText('advisor'),
           currency: multiSelectionText('currency'),
+          type: multiSelectionText('type'),
           search: state.search || 'Sin búsqueda',
           generatedAt: new Intl.DateTimeFormat('es-AR', {
             day: '2-digit', month: '2-digit', year: 'numeric',
@@ -1931,6 +1963,7 @@
           ['FA', filterContext.fa, 'text'],
           ['Asesor', filterContext.advisor, 'text'],
           ['Moneda', filterContext.currency, 'text'],
+          ['Tipo de activo', filterContext.type, 'text'],
           ['Búsqueda', filterContext.search, 'text'],
           ['Posiciones exportadas', indices.length, 'integer'],
           ['Tenencia total USD', selectedTotal, 'money'],
@@ -2211,13 +2244,15 @@
         renderTable();
       });
       els.reset.addEventListener('click', () => {
-        Object.assign(state, { fa: new Set(), advisor: new Set(), currency: new Set(), search: '', page: 1 });
+        Object.assign(state, { fa: new Set(), advisor: new Set(), currency: new Set(), type: new Set(), search: '', page: 1 });
         els.search.value = '';
         setMultiSelectOpen('', false);
         updateMultiSelectTrigger('fa');
         updateMultiSelectTrigger('currency');
+        updateMultiSelectTrigger('type');
         renderMultiSelectOptions('fa');
         renderMultiSelectOptions('currency');
+        renderMultiSelectOptions('type');
         updateAdvisorOptions();
         renderAll();
       });
@@ -2270,8 +2305,10 @@
 
       updateMultiSelectTrigger('fa');
       updateMultiSelectTrigger('currency');
+      updateMultiSelectTrigger('type');
       renderMultiSelectOptions('fa');
       renderMultiSelectOptions('currency');
+      renderMultiSelectOptions('type');
       updateAdvisorOptions();
       els.updated.innerHTML = `Actualizado <strong>${escapeHtml(formatDate(data.meta.generatedAt))}</strong> · ${intFormat.format(data.meta.sourceRows)} filas fuente`;
       if (data.meta.exportWarning) document.getElementById('data-warning').style.display = 'block';
