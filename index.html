@@ -111,7 +111,7 @@
 
     .filters {
       display: grid;
-      grid-template-columns: minmax(150px, 1fr) minmax(190px, 1.2fr) minmax(145px, .9fr) minmax(175px, 1.1fr) minmax(205px, 1.3fr) auto;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
       gap: 14px;
       align-items: end;
       padding: 18px;
@@ -261,6 +261,7 @@
     }
 
     .reset:hover { border-color: #41536b; }
+    .filters .reset { width: 100%; }
 
     .data-warning {
       display: none;
@@ -598,7 +599,7 @@
 
     table {
       width: 100%;
-      min-width: 1080px;
+      min-width: 1420px;
       border-collapse: collapse;
       font-size: .84rem;
     }
@@ -943,6 +944,32 @@
           </div>
         </div>
       </div>
+      <div class="field multi-select-field">
+        <label for="filter-industry" id="industry-label">Industria</label>
+        <div class="search-select" id="industry-combobox">
+          <button class="control search-select-trigger" id="filter-industry" type="button" aria-haspopup="listbox" aria-expanded="false" aria-controls="industry-options" aria-labelledby="industry-label industry-selected">
+            <span id="industry-selected">Todas las industrias</span>
+            <span class="search-select-chevron" aria-hidden="true">⌄</span>
+          </button>
+          <div class="search-select-popover" id="industry-popover" hidden>
+            <input class="control search-select-input" id="industry-search" type="search" placeholder="Buscar industria…" autocomplete="off" aria-label="Buscar industria">
+            <div class="search-select-options" id="industry-options" role="listbox" aria-multiselectable="true" aria-labelledby="industry-label"></div>
+          </div>
+        </div>
+      </div>
+      <div class="field multi-select-field">
+        <label for="filter-issuer" id="issuer-label">Emisor / Entidad</label>
+        <div class="search-select" id="issuer-combobox">
+          <button class="control search-select-trigger" id="filter-issuer" type="button" aria-haspopup="listbox" aria-expanded="false" aria-controls="issuer-options" aria-labelledby="issuer-label issuer-selected">
+            <span id="issuer-selected">Todos los emisores</span>
+            <span class="search-select-chevron" aria-hidden="true">⌄</span>
+          </button>
+          <div class="search-select-popover" id="issuer-popover" hidden>
+            <input class="control search-select-input" id="issuer-search" type="search" placeholder="Buscar emisor…" autocomplete="off" aria-label="Buscar emisor o entidad">
+            <div class="search-select-options" id="issuer-options" role="listbox" aria-multiselectable="true" aria-labelledby="issuer-label"></div>
+          </div>
+        </div>
+      </div>
       <div class="field">
         <label for="filter-search">Cliente o activo</label>
         <input class="control" id="filter-search" type="search" placeholder="Nombre, comitente, ticker…" autocomplete="off">
@@ -1044,6 +1071,8 @@
               <th><button type="button" data-sort="ticker">Ticker</button></th>
               <th><button type="button" data-sort="tipo">Tipo</button></th>
               <th><button type="button" data-sort="moneda">Moneda</button></th>
+              <th><button type="button" data-sort="emisor">Emisor / Entidad</button></th>
+              <th><button type="button" data-sort="industria">Industria</button></th>
               <th class="number"><button type="button" data-sort="nominales">Nominales</button></th>
               <th class="number"><button type="button" data-sort="tenencia">Tenencia USD</button></th>
             </tr>
@@ -1104,7 +1133,9 @@
         nominales: 6,
         instrumento: 7,
         moneda: 8,
-        tipo: 9
+        tipo: 9,
+        emisor: 10,
+        industria: 11
       });
 
       const dims = data.dimensions;
@@ -1120,6 +1151,8 @@
         advisor: new Set(),
         currency: new Set(),
         type: new Set(),
+        industry: new Set(),
+        issuer: new Set(),
         search: '',
         page: 1,
         pageSize: 50,
@@ -1152,6 +1185,18 @@
         typeSelected: document.getElementById('type-selected'),
         typePopover: document.getElementById('type-popover'),
         typeOptions: document.getElementById('type-options'),
+        industry: document.getElementById('filter-industry'),
+        industryBox: document.getElementById('industry-combobox'),
+        industrySelected: document.getElementById('industry-selected'),
+        industryPopover: document.getElementById('industry-popover'),
+        industrySearch: document.getElementById('industry-search'),
+        industryOptions: document.getElementById('industry-options'),
+        issuer: document.getElementById('filter-issuer'),
+        issuerBox: document.getElementById('issuer-combobox'),
+        issuerSelected: document.getElementById('issuer-selected'),
+        issuerPopover: document.getElementById('issuer-popover'),
+        issuerSearch: document.getElementById('issuer-search'),
+        issuerOptions: document.getElementById('issuer-options'),
         search: document.getElementById('filter-search'),
         reset: document.getElementById('reset-filters'),
         exportExcel: document.getElementById('export-excel'),
@@ -1246,6 +1291,30 @@
           options: els.typeOptions,
           search: null,
           optionIds: sortedDimensionIds('tipo')
+        },
+        industry: {
+          field: 'industria',
+          allLabel: 'Todas las industrias',
+          countLabel: 'industrias seleccionadas',
+          trigger: els.industry,
+          box: els.industryBox,
+          selected: els.industrySelected,
+          popover: els.industryPopover,
+          options: els.industryOptions,
+          search: els.industrySearch,
+          optionIds: sortedDimensionIds('industria')
+        },
+        issuer: {
+          field: 'emisor',
+          allLabel: 'Todos los emisores',
+          countLabel: 'emisores seleccionados',
+          trigger: els.issuer,
+          box: els.issuerBox,
+          selected: els.issuerSelected,
+          popover: els.issuerPopover,
+          options: els.issuerOptions,
+          search: els.issuerSearch,
+          optionIds: sortedDimensionIds('emisor')
         }
       };
 
@@ -1376,7 +1445,9 @@
           dimValue('cuenta', row[R.cuenta]),
           dimValue('comitente', row[R.comitente]),
           dimValue('ticker', row[R.ticker]),
-          dimValue('instrumento', row[R.instrumento])
+          dimValue('instrumento', row[R.instrumento]),
+          dimValue('emisor', row[R.emisor]),
+          dimValue('industria', row[R.industria])
         ].some(value => normalize(value).includes(query));
       }
 
@@ -1390,6 +1461,8 @@
           if (state.advisor.size && !state.advisor.has(row[R.asesor])) continue;
           if (state.currency.size && !state.currency.has(row[R.moneda])) continue;
           if (state.type.size && !state.type.has(row[R.tipo])) continue;
+          if (state.industry.size && !state.industry.has(row[R.industria])) continue;
+          if (state.issuer.size && !state.issuer.has(row[R.emisor])) continue;
           if (!rowMatchesSearch(row, query)) continue;
           output.push(i);
         }
@@ -1856,6 +1929,8 @@
           advisor: multiSelectionText('advisor'),
           currency: multiSelectionText('currency'),
           type: multiSelectionText('type'),
+          industry: multiSelectionText('industry'),
+          issuer: multiSelectionText('issuer'),
           search: state.search || 'Sin búsqueda',
           generatedAt: new Intl.DateTimeFormat('es-AR', {
             day: '2-digit', month: '2-digit', year: 'numeric',
@@ -1908,20 +1983,22 @@
 
         const headers = [
           'Cliente', 'Comitente', 'FA', 'Asesor', 'Ticker',
-          'Instrumento', 'Tipo de activo', 'Moneda', 'Nominales', 'Tenencia USD'
+          'Instrumento', 'Tipo de activo', 'Moneda', 'Emisor / Entidad',
+          'Industria', 'Nominales', 'Tenencia USD'
         ];
         const lastDataRow = indices.length + 1;
         const sheetParts = [
           '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
           '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
-          '<dimension ref="A1:J' + lastDataRow + '"/>',
+          '<dimension ref="A1:L' + lastDataRow + '"/>',
           '<sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>',
           '<sheetFormatPr defaultRowHeight="18"/>',
           '<cols><col min="1" max="1" width="28" customWidth="1"/><col min="2" max="2" width="15" customWidth="1"/>' +
             '<col min="3" max="3" width="17" customWidth="1"/><col min="4" max="4" width="28" customWidth="1"/>' +
             '<col min="5" max="5" width="16" customWidth="1"/><col min="6" max="6" width="48" customWidth="1"/>' +
             '<col min="7" max="7" width="20" customWidth="1"/><col min="8" max="8" width="13" customWidth="1"/>' +
-            '<col min="9" max="10" width="18" customWidth="1"/></cols>',
+            '<col min="9" max="9" width="28" customWidth="1"/><col min="10" max="10" width="22" customWidth="1"/>' +
+            '<col min="11" max="12" width="18" customWidth="1"/></cols>',
           '<sheetData><row r="1" ht="24" customHeight="1">'
         ];
         headers.forEach((header, index) => {
@@ -1940,11 +2017,13 @@
             dimValue('ticker', row[R.ticker]),
             dimValue('instrumento', row[R.instrumento]),
             dimValue('tipo', row[R.tipo]),
-            dimValue('moneda', row[R.moneda])
+            dimValue('moneda', row[R.moneda]),
+            dimValue('emisor', row[R.emisor]),
+            dimValue('industria', row[R.industria])
           ];
           const cells = textValues.map((value, index) => textCell(excelColumn(index), rowNumber, value));
-          cells.push(numberCell('I', rowNumber, row[R.nominales], 2));
-          cells.push(numberCell('J', rowNumber, row[R.tenencia], 3));
+          cells.push(numberCell('K', rowNumber, row[R.nominales], 2));
+          cells.push(numberCell('L', rowNumber, row[R.tenencia], 3));
           sheetParts.push('<row r="' + rowNumber + '">' + cells.join('') + '</row>');
 
           if (position > 0 && position % 4000 === 0) {
@@ -1953,7 +2032,7 @@
           }
         }
         sheetParts.push(
-          '</sheetData><autoFilter ref="A1:J' + lastDataRow + '"/>' +
+          '</sheetData><autoFilter ref="A1:L' + lastDataRow + '"/>' +
           '<pageMargins left="0.25" right="0.25" top="0.5" bottom="0.5" header="0.2" footer="0.2"/>' +
           '</worksheet>'
         );
@@ -1964,6 +2043,8 @@
           ['Asesor', filterContext.advisor, 'text'],
           ['Moneda', filterContext.currency, 'text'],
           ['Tipo de activo', filterContext.type, 'text'],
+          ['Industria', filterContext.industry, 'text'],
+          ['Emisor / Entidad', filterContext.issuer, 'text'],
           ['Búsqueda', filterContext.search, 'text'],
           ['Posiciones exportadas', indices.length, 'integer'],
           ['Tenencia total USD', selectedTotal, 'money'],
@@ -2089,7 +2170,9 @@
         if (!state.filtered.length || state.exporting) return;
         const indices = [...state.filtered];
         const filterContext = currentExportContext();
-        const hasFilters = state.fa.size > 0 || state.advisor.size > 0 || state.currency.size > 0 || Boolean(state.search);
+        const hasFilters = state.fa.size > 0 || state.advisor.size > 0 ||
+          state.currency.size > 0 || state.type.size > 0 ||
+          state.industry.size > 0 || state.issuer.size > 0 || Boolean(state.search);
         const filename = 'tenencias_' + (hasFilters ? 'filtradas_' : 'completas_') + new Date().toISOString().slice(0, 10) + '.xlsx';
 
         state.exporting = true;
@@ -2122,7 +2205,7 @@
         const pageRows = state.filtered.slice(start, start + state.pageSize);
 
         if (!pageRows.length) {
-          els.body.innerHTML = '<tr><td colspan="8"><div class="empty">No hay tenencias que coincidan con los filtros.</div></td></tr>';
+          els.body.innerHTML = '<tr><td colspan="10"><div class="empty">No hay tenencias que coincidan con los filtros.</div></td></tr>';
         } else {
           els.body.innerHTML = pageRows.map(index => {
             const row = rows[index];
@@ -2138,6 +2221,8 @@
               `<td><span class="primary-cell">${escapeHtml(ticker)}</span><span class="secondary-cell">${escapeHtml(instrument)}</span></td>` +
               `<td><span class="tag">${escapeHtml(dimValue('tipo', row[R.tipo]))}</span></td>` +
               `<td><span class="tag">${escapeHtml(currency)}</span></td>` +
+              `<td>${escapeHtml(dimValue('emisor', row[R.emisor]))}</td>` +
+              `<td>${escapeHtml(dimValue('industria', row[R.industria]))}</td>` +
               `<td class="number">${nominalFormat.format(row[R.nominales])}</td>` +
               `<td class="number primary-cell">${valueFormat.format(row[R.tenencia])}</td>` +
               `</tr>`;
@@ -2244,15 +2329,23 @@
         renderTable();
       });
       els.reset.addEventListener('click', () => {
-        Object.assign(state, { fa: new Set(), advisor: new Set(), currency: new Set(), type: new Set(), search: '', page: 1 });
+        Object.assign(state, {
+          fa: new Set(), advisor: new Set(), currency: new Set(),
+          type: new Set(), industry: new Set(), issuer: new Set(),
+          search: '', page: 1
+        });
         els.search.value = '';
         setMultiSelectOpen('', false);
         updateMultiSelectTrigger('fa');
         updateMultiSelectTrigger('currency');
         updateMultiSelectTrigger('type');
+        updateMultiSelectTrigger('industry');
+        updateMultiSelectTrigger('issuer');
         renderMultiSelectOptions('fa');
         renderMultiSelectOptions('currency');
         renderMultiSelectOptions('type');
+        renderMultiSelectOptions('industry');
+        renderMultiSelectOptions('issuer');
         updateAdvisorOptions();
         renderAll();
       });
@@ -2306,9 +2399,13 @@
       updateMultiSelectTrigger('fa');
       updateMultiSelectTrigger('currency');
       updateMultiSelectTrigger('type');
+      updateMultiSelectTrigger('industry');
+      updateMultiSelectTrigger('issuer');
       renderMultiSelectOptions('fa');
       renderMultiSelectOptions('currency');
       renderMultiSelectOptions('type');
+      renderMultiSelectOptions('industry');
+      renderMultiSelectOptions('issuer');
       updateAdvisorOptions();
       els.updated.innerHTML = `Actualizado <strong>${escapeHtml(formatDate(data.meta.generatedAt))}</strong> · ${intFormat.format(data.meta.sourceRows)} filas fuente`;
       if (data.meta.exportWarning) document.getElementById('data-warning').style.display = 'block';
